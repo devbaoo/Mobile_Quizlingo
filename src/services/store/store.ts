@@ -1,14 +1,16 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { persistReducer, persistStore } from "redux-persist";
+import authReducer from "../slices/auth/authSlice";
 
 const persistConfig = {
   key: "root",
   storage: AsyncStorage,
-  whitelist: ["auth", "quiz"], // Persist cả auth và quiz state
+  whitelist: ["auth"], // Chỉ persist auth state
 };
 
 const rootReducer = combineReducers({
+  auth: authReducer,
   // Thêm các reducer khác ở đây
 });
 
