@@ -11,6 +11,8 @@ import {
     ActivityIndicator,
     Alert,
     Animated,
+    Image,
+    Platform,
     RefreshControl,
     SafeAreaView,
     ScrollView,
@@ -207,19 +209,19 @@ const UserHomeScreen = () => {
     const renderLessonIcon = (status: string, index: number) => {
         if (status === 'COMPLETE') {
             return (
-                <View style={[styles.lessonIcon, styles.lessonComplete]}>
+                <View style={[styles.lessonIcon, styles.lessonComplete, styles.lessonIconShadow]}>
                     <Text style={styles.lessonIconText}>✓</Text>
                 </View>
             );
         } else if (status === 'LOCKED') {
             return (
-                <View style={[styles.lessonIcon, styles.lessonLocked]}>
+                <View style={[styles.lessonIcon, styles.lessonLocked, styles.lessonIconShadow]}>
                     <Text style={styles.lessonIconText}>🔒</Text>
                 </View>
             );
         } else {
             return (
-                <View style={[styles.lessonIcon, styles.lessonAvailable]}>
+                <View style={[styles.lessonIcon, styles.lessonAvailable, styles.lessonIconShadow]}>
                     <Text style={styles.lessonIconText}>{index + 1}</Text>
                 </View>
             );
@@ -244,10 +246,11 @@ const UserHomeScreen = () => {
                 <TouchableOpacity
                     style={styles.profileSection}
                     onPress={toggleSidebar}
+                    activeOpacity={0.7}
                 >
                     <View style={styles.avatarContainer}>
                         {profile?.avatar ? (
-                            <View style={styles.avatarImage} />
+                            <Image source={{ uri: profile.avatar }} style={styles.avatarImage} />
                         ) : (
                             <Text style={styles.avatarText}>
                                 {profile?.firstName?.[0]}{profile?.lastName?.[0] || '👤'}
@@ -255,7 +258,7 @@ const UserHomeScreen = () => {
                         )}
                     </View>
                     <View>
-                        <Text style={styles.userName}>
+                        <Text style={styles.userName} numberOfLines={1}>
                             {profile?.firstName} {profile?.lastName || 'Học viên'}
                         </Text>
                         <View style={styles.levelContainer}>
@@ -266,7 +269,7 @@ const UserHomeScreen = () => {
                         </View>
                     </View>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.streakContainer}>
+                <TouchableOpacity style={styles.streakContainer} activeOpacity={0.7}>
                     <Text style={styles.streakIcon}>🔥</Text>
                     <Text style={styles.streakText}>{profile?.streak || 0}</Text>
                 </TouchableOpacity>
@@ -287,8 +290,11 @@ const UserHomeScreen = () => {
                     {topics.map((topicWithLessons, topicIndex) => (
                         <View key={topicWithLessons.topic._id} style={styles.topicSection}>
                             <View style={styles.topicHeader}>
-                                <Text style={styles.topicName}>{topicWithLessons.topic.name.toUpperCase()}</Text>
-                                <Text style={styles.topicDescription}>{topicWithLessons.topic.description}</Text>
+                                <View style={styles.topicIcon}><Text>🧩</Text></View>
+                                <View>
+                                    <Text style={styles.topicName}>{topicWithLessons.topic.name.toUpperCase()}</Text>
+                                    <Text style={styles.topicDescription}>{topicWithLessons.topic.description}</Text>
+                                </View>
                             </View>
 
                             <View style={styles.pathContainer}>
@@ -306,39 +312,42 @@ const UserHomeScreen = () => {
                                         <TouchableOpacity
                                             style={[
                                                 styles.lessonContainer,
-                                                lesson.status === 'LOCKED' ? styles.lessonContainerLocked : {}
+                                                lesson.status === 'LOCKED' ? styles.lessonContainerLocked :
+                                                    lesson.status === 'COMPLETE' ? styles.lessonContainerComplete :
+                                                        styles.lessonContainerActive
                                             ]}
                                             onPress={() => handleLessonPress(lesson._id, lesson.status)}
+                                            activeOpacity={lesson.status === 'LOCKED' ? 1 : 0.85}
                                         >
                                             {renderLessonIcon(lesson.status, lessonIndex)}
-                                            <Text
-                                                style={[
-                                                    styles.lessonTitle,
-                                                    lesson.status === 'LOCKED' ? styles.lessonTitleLocked : {}
-                                                ]}
-                                                numberOfLines={2}
-                                            >
-                                                {lesson.title}
-                                            </Text>
-
-                                            <View style={styles.lessonMetaContainer}>
-                                                <View style={styles.levelIndicator}>
-                                                    <Text style={styles.levelIndicatorText}>
-                                                        {lesson.level?.name || 'Beginner'}
-                                                    </Text>
-                                                </View>
-
-                                                <View style={styles.skillsContainer}>
-                                                    {lesson.skills.map((skill) => (
-                                                        <View key={skill._id} style={styles.skillBadge}>
-                                                            <Text style={styles.skillText}>
-                                                                {skill.name === 'Writing' ? '✏️' :
-                                                                    skill.name === 'Listening' ? '👂' :
-                                                                        skill.name === 'Speaking' ? '🗣️' :
-                                                                            skill.name === 'Vocabulary' ? '📚' : '🧠'}
-                                                            </Text>
-                                                        </View>
-                                                    ))}
+                                            <View style={{ flex: 1 }}>
+                                                <Text
+                                                    style={[
+                                                        styles.lessonTitle,
+                                                        lesson.status === 'LOCKED' ? styles.lessonTitleLocked : {}
+                                                    ]}
+                                                    numberOfLines={2}
+                                                >
+                                                    {lesson.title}
+                                                </Text>
+                                                <View style={styles.lessonMetaContainer}>
+                                                    <View style={styles.levelIndicator}>
+                                                        <Text style={styles.levelIndicatorText}>
+                                                            {lesson.level?.name || 'Beginner'}
+                                                        </Text>
+                                                    </View>
+                                                    <View style={styles.skillsContainer}>
+                                                        {lesson.skills.map((skill) => (
+                                                            <View key={skill._id} style={styles.skillBadge}>
+                                                                <Text style={styles.skillText}>
+                                                                    {skill.name === 'Writing' ? '✏️' :
+                                                                        skill.name === 'Listening' ? '👂' :
+                                                                            skill.name === 'Speaking' ? '🗣️' :
+                                                                                skill.name === 'Vocabulary' ? '📚' : '🧠'}
+                                                                </Text>
+                                                            </View>
+                                                        ))}
+                                                    </View>
                                                 </View>
                                             </View>
                                         </TouchableOpacity>
@@ -385,32 +394,36 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingVertical: 10,
         backgroundColor: '#fff',
         borderBottomWidth: 1,
         borderBottomColor: '#e0e0e0',
+        elevation: 2,
+        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 24,
     },
     profileSection: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     avatarContainer: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         backgroundColor: '#DDF4FF',
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,
+        borderWidth: 2,
+        borderColor: '#1CB0F6',
     },
     avatarImage: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#DDF4FF',
+        resizeMode: 'cover',
     },
     avatarText: {
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: 'bold',
         color: '#0073e6',
     },
@@ -418,6 +431,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         color: '#4b4b4b',
+        maxWidth: 120,
     },
     levelContainer: {
         flexDirection: 'row',
@@ -444,16 +458,23 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#FFECEC',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 16,
+        paddingHorizontal: 14,
+        paddingVertical: 7,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: '#FF4B4B',
+        shadowColor: '#FF4B4B',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+        elevation: 2,
     },
     streakIcon: {
-        fontSize: 16,
+        fontSize: 18,
         marginRight: 4,
     },
     streakText: {
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: 'bold',
         color: '#FF4B4B',
     },
@@ -464,18 +485,29 @@ const styles = StyleSheet.create({
         padding: 16,
     },
     topicSection: {
-        marginBottom: 24,
+        marginBottom: 28,
     },
     topicHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
         marginBottom: 12,
         backgroundColor: '#fff',
-        padding: 12,
-        borderRadius: 8,
+        padding: 16,
+        borderRadius: 12,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    topicIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#E6F7FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
     },
     topicName: {
         fontSize: 18,
@@ -495,12 +527,14 @@ const styles = StyleSheet.create({
         width: 4,
         height: 30,
         backgroundColor: '#58CC02',
+        borderRadius: 2,
+        marginVertical: 2,
     },
     pathLineEven: {
         backgroundColor: '#58CC02',
     },
     pathLineOdd: {
-        backgroundColor: '#58CC02',
+        backgroundColor: '#1CB0F6',
     },
     pathLineLocked: {
         backgroundColor: '#ccc',
@@ -508,27 +542,42 @@ const styles = StyleSheet.create({
     lessonContainer: {
         width: '100%',
         backgroundColor: '#fff',
-        borderRadius: 12,
+        borderRadius: 14,
         padding: 16,
-        marginBottom: 8,
+        marginBottom: 10,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
         elevation: 2,
         flexDirection: 'row',
         alignItems: 'center',
+        borderWidth: 2,
     },
     lessonContainerLocked: {
+        borderColor: '#ccc',
         backgroundColor: '#f9f9f9',
     },
+    lessonContainerActive: {
+        borderColor: '#1CB0F6',
+    },
+    lessonContainerComplete: {
+        borderColor: '#58CC02',
+    },
     lessonIcon: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 16,
+        marginRight: 18,
+    },
+    lessonIconShadow: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.10,
+        shadowRadius: 4,
+        elevation: 2,
     },
     lessonComplete: {
         backgroundColor: '#58CC02',
@@ -541,7 +590,7 @@ const styles = StyleSheet.create({
     },
     lessonIconText: {
         color: '#fff',
-        fontSize: 20,
+        fontSize: 22,
         fontWeight: 'bold',
     },
     lessonTitle: {
@@ -559,29 +608,30 @@ const styles = StyleSheet.create({
     },
     levelIndicator: {
         backgroundColor: '#F7F7F7',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
         borderRadius: 8,
         marginBottom: 6,
     },
     levelIndicatorText: {
-        fontSize: 12,
+        fontSize: 13,
         color: '#666',
+        fontWeight: '600',
     },
     skillsContainer: {
         flexDirection: 'row',
     },
     skillBadge: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
+        width: 28,
+        height: 28,
+        borderRadius: 14,
         backgroundColor: '#F0F8FF',
         justifyContent: 'center',
         alignItems: 'center',
         marginLeft: 4,
     },
     skillText: {
-        fontSize: 12,
+        fontSize: 16,
     },
 });
 

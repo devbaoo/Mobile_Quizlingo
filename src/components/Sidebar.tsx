@@ -3,7 +3,7 @@ import { UserProfile } from '@/types/user.types';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useEffect, useRef } from 'react';
-import { Animated, Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 
 // Define navigation params
@@ -67,9 +67,13 @@ const Sidebar = ({ user, onClose, isOpen }: SidebarProps) => {
             <View style={styles.header}>
                 <View style={styles.profileSection}>
                     <View style={styles.avatar}>
-                        <Text style={styles.avatarText}>
-                            {user?.firstName?.[0]}{user?.lastName?.[0]}
-                        </Text>
+                        {user?.avatar ? (
+                            <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+                        ) : (
+                            <Text style={styles.avatarText}>
+                                {user?.firstName?.[0]}{user?.lastName?.[0]}
+                            </Text>
+                        )}
                     </View>
                     <View style={styles.userInfo}>
                         <Text style={styles.userName}>
@@ -194,6 +198,12 @@ const styles = StyleSheet.create({
         backgroundColor: '#e6f7ff', // Secondary light
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    avatarImage: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        resizeMode: 'cover',
     },
     avatarText: {
         fontSize: 18,
