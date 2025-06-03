@@ -12,7 +12,6 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export const HomeScreen = () => {
     const navigation = useNavigation<NavigationProp>();
-    const windowWidth = Dimensions.get('window').width;
 
     return (
         <ScrollView style={styles.container}>

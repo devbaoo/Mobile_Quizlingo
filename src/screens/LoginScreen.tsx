@@ -20,6 +20,7 @@ type RootStackParamList = {
     Register: undefined;
     Login: undefined;
     ForgotPassword: undefined;
+    UserHome: undefined;
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -27,7 +28,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export const LoginScreen = () => {
     const navigation = useNavigation<NavigationProp>();
     const dispatch = useDispatch<AppDispatch>();
-    const { loading, error } = useSelector((state: RootState) => state.auth);
+    const { loading } = useSelector((state: RootState) => state.auth);
     const [credentials, setCredentials] = useState({ email: '', password: '' });
 
     const handleChange = (name: string, value: string) => {
@@ -40,8 +41,8 @@ export const LoginScreen = () => {
         }
         try {
             await dispatch(loginUser(credentials)).unwrap();
-            // Navigation will be handled by the auth state change
-        } catch (error) {
+            navigation.navigate('UserHome');
+        } catch {
             // Error is handled by the auth slice
         }
     };

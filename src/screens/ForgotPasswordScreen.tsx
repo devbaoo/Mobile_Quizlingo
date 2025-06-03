@@ -27,7 +27,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export const ForgotPasswordScreen = () => {
     const navigation = useNavigation<NavigationProp>();
     const dispatch = useDispatch<AppDispatch>();
-    const { loading, error } = useSelector((state: RootState) => state.auth);
+    const { loading } = useSelector((state: RootState) => state.auth);
     const [email, setEmail] = useState('');
 
     const handleSubmit = async () => {
