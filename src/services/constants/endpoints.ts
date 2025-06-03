@@ -14,7 +14,7 @@ export const ENDPOINTS = {
   LESSON: {
     GET_ALL: "/lessons",
     GET_BY_ID: (id: string) => `/lessons/${id}`,
-    COMPLETE: "/lessons/complete",
+    COMPLETE: "/progress",
     RETRY: "/lessons/retry",
   },
   USER: {

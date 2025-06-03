@@ -79,18 +79,31 @@ export interface IQuestion {
   __v: number;
 }
 
-export interface QuestionResult {
+// Interface cho dữ liệu gửi lên server
+export interface QuestionSubmission {
   questionId: string;
   answer: string;
   isCorrect: boolean;
   isTimeout: boolean;
 }
 
-export interface QuestionResultWithScore extends QuestionResult {
+// Interface cho dữ liệu nhận về từ server
+export interface QuestionResultWithScore {
+  questionId: string;
+  answer: string;
+  isCorrect: boolean;
+  isTimeout: boolean;
   score: number;
   feedback: string | null;
   transcription: string | null;
   _id: string;
+}
+
+export interface QuestionResult extends QuestionSubmission {
+  score?: number;
+  feedback?: string | null;
+  transcription?: string | null;
+  _id?: string;
 }
 
 export interface LessonProgress {

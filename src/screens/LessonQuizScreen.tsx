@@ -1,5 +1,6 @@
-import { fetchLessonById } from '@/services/slices/lesson/lessonSlice';
+import { completeLesson, fetchLessonById } from '@/services/slices/lesson/lessonSlice';
 import { AppDispatch, RootState } from '@/services/store/store';
+import { QuestionResult, QuestionResultWithScore, QuestionSubmission } from '@/types/lesson.type';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useEffect, useState } from 'react';
@@ -7,13 +8,14 @@ import {
     ActivityIndicator,
     Alert,
     BackHandler,
+    Dimensions,
     SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useDispatch, useSelector } from 'react-redux';
@@ -22,21 +24,21 @@ import { useDispatch, useSelector } from 'react-redux';
 type RootStackParamList = {
     LessonQuiz: { lessonId: string };
     LessonComplete: {
-        lessonId: string,
-        score: number,
-        questionResults: {
-            questionId: string;
-            answer: string;
-            isCorrect: boolean;
-            isTimeout: boolean;
-        }[],
-        isRetried: boolean
+        lessonId: string;
+        score: number;
+        questionResults: QuestionResultWithScore[];
+        isRetried: boolean;
     };
     UserHome: undefined;
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'LessonQuiz'>;
+
+// Get screen dimensions for responsive design
+const { width, height } = Dimensions.get('window');
+const isSmallScreen = width < 360; // For very small devices
+const scale = (size: number) => (width / 375) * size; // Scale based on a 375px base width (common for mobile)
 
 const LessonQuizScreen = () => {
     const route = useRoute<RouteProps>();
@@ -50,7 +52,7 @@ const LessonQuizScreen = () => {
     const [selectedAnswer, setSelectedAnswer] = useState('');
     const [questionResults, setQuestionResults] = useState<any[]>([]);
     const [remainingTime, setRemainingTime] = useState(0);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isInitialized, setIsInitialized] = useState(false);
 
     // Prevent accidental back button press
     useEffect(() => {
@@ -59,8 +61,8 @@ const LessonQuizScreen = () => {
                 'Thoát bài học',
                 'Bạn có chắc muốn thoát? Tiến độ bài học sẽ không được lưu.',
                 [
-                    { text: 'Hủy', style: 'cancel', onPress: () => { } },
-                    { text: 'Thoát', style: 'destructive', onPress: () => navigation.navigate('UserHome') }
+                    { text: 'Hủy', style: 'cancel', onPress: () => {} },
+                    { text: 'Thoát', style: 'destructive', onPress: () => navigation.navigate('UserHome') },
                 ]
             );
             return true;
@@ -73,12 +75,12 @@ const LessonQuizScreen = () => {
         const loadLesson = async () => {
             try {
                 await dispatch(fetchLessonById(lessonId)).unwrap();
+                setIsInitialized(true);
             } catch (error) {
-                console.error('Failed to load lesson:', error);
                 Toast.show({
                     type: 'error',
                     text1: 'Không thể tải bài học',
-                    text2: 'Vui lòng thử lại sau'
+                    text2: 'Vui lòng thử lại sau',
                 });
                 navigation.navigate('UserHome');
             }
@@ -86,121 +88,224 @@ const LessonQuizScreen = () => {
         loadLesson();
     }, [dispatch, lessonId, navigation]);
 
-    // Set timer for each question
+    // Set timer for each question - only after initialization
     useEffect(() => {
-        if (!currentLesson) return;
+        if (!currentLesson || !isInitialized) return;
         const currentQuestion = currentLesson.questions[currentQuestionIndex];
-        setRemainingTime(currentQuestion.timeLimit || 30); // default 30s if not set
-    }, [currentLesson, currentQuestionIndex]);
+        const initialTime = currentQuestion.timeLimit || 30; // default 30s if not set
+        setRemainingTime(initialTime);
+    }, [currentLesson, currentQuestionIndex, isInitialized]);
 
-    // Timer countdown for each question
+    // Timer countdown for each question - only after initialization
     useEffect(() => {
-        if (!currentLesson) return;
-        if (remainingTime <= 0) {
-            handleTimeout();
-            return;
-        }
-        const timerId = setInterval(() => {
-            setRemainingTime(prev => {
-                if (prev <= 1) {
-                    clearInterval(timerId);
+        if (!isInitialized) return;
+
+        const timer = setInterval(() => {
+            setRemainingTime((prevTime) => {
+                if (prevTime <= 0) {
+                    clearInterval(timer);
                     return 0;
                 }
-                return prev - 1;
+                return prevTime - 1;
             });
         }, 1000);
-        return () => clearInterval(timerId);
-    }, [remainingTime, currentLesson, currentQuestionIndex]);
+
+        return () => clearInterval(timer);
+    }, [currentQuestionIndex, isInitialized]);
+
+    // Watch for timeout
+    useEffect(() => {
+        if (!isInitialized || remainingTime > 0) return;
+        if (questionResults.length === 0) return; // Nếu chưa làm câu nào thì không gọi handleTimeout
+        handleTimeout();
+    }, [remainingTime, isInitialized, questionResults.length]);
 
     // Handle timeout for a question
-    const handleTimeout = () => {
-        if (!currentLesson) return;
+    const handleTimeout = async () => {
+        if (!currentLesson || !isInitialized) return;
         const currentQuestion = currentLesson.questions[currentQuestionIndex];
-        const result = {
+
+        const result: QuestionResult = {
             questionId: currentQuestion._id,
-            answer: '',
+            answer: '[TIMEOUT]',
             isCorrect: false,
-            isTimeout: true
+            isTimeout: true,
+            score: 0,
         };
-        setQuestionResults(prev => [...prev, result]);
-        setTextAnswer('');
-        setSelectedAnswer('');
+
+        const newResults = [...questionResults, result];
+        setQuestionResults(newResults);
+
         if (currentQuestionIndex < currentLesson.questions.length - 1) {
-            setCurrentQuestionIndex(prev => prev + 1);
+            setCurrentQuestionIndex((prev) => prev + 1);
         } else {
-            handleSubmitLesson([...questionResults, result]);
+            try {
+                const cleanResults: QuestionSubmission[] = newResults.map((r) => ({
+                    questionId: r.questionId,
+                    answer: r.answer || '[TIMEOUT]',
+                    isCorrect: r.isCorrect,
+                    isTimeout: r.isTimeout,
+                }));
+
+                const response = await dispatch(
+                    completeLesson({
+                        lessonId,
+                        score: 0,
+                        questionResults: cleanResults,
+                        isRetried: false,
+                    })
+                ).unwrap();
+
+                const apiResults = response.progress.questionResults as any[];
+                const processedResults: QuestionResultWithScore[] = apiResults.map((r) => ({
+                    questionId: r.questionId,
+                    answer: r.answer,
+                    isCorrect: r.isCorrect,
+                    isTimeout: r.isTimeout,
+                    score: r.score || 0,
+                    feedback: r.feedback || null,
+                    transcription: r.transcription || null,
+                    _id: r._id || '',
+                }));
+
+                navigation.navigate('LessonComplete', {
+                    lessonId,
+                    score: response.progress.score,
+                    questionResults: processedResults,
+                    isRetried: false,
+                });
+            } catch (error: any) {
+                Toast.show({
+                    type: 'error',
+                    text1: 'Không thể hoàn thành bài học',
+                    text2: error?.message || 'Vui lòng thử lại',
+                });
+            }
         }
     };
 
     const handleNextQuestion = () => {
-        if (!currentLesson) return;
+        if (!currentLesson || !isInitialized) return;
         const currentQuestion = currentLesson.questions[currentQuestionIndex];
         let answer = '';
-        if (currentQuestion.type === 'multiple_choice') {
-            answer = selectedAnswer;
-            if (!answer) {
-                Toast.show({
-                    type: 'warning',
-                    text1: 'Vui lòng chọn một đáp án'
-                });
-                return;
+
+        if (remainingTime <= 0) {
+            const result = {
+                questionId: currentQuestion._id,
+                answer: '[TIMEOUT]',
+                isCorrect: false,
+                isTimeout: true,
+                score: 0,
+            };
+            const newResults = [...questionResults, result];
+            setQuestionResults(newResults);
+            moveToNextOrComplete(newResults);
+            return;
+        }
+
+        switch (currentQuestion.type) {
+            case 'multiple_choice': {
+                answer = selectedAnswer;
+                if (!answer) {
+                    Toast.show({ type: 'warning', text1: 'Vui lòng chọn một đáp án' });
+                    return;
+                }
+                break;
             }
-        } else {
-            answer = textAnswer;
-            if (!answer.trim()) {
-                Toast.show({
-                    type: 'warning',
-                    text1: 'Vui lòng nhập câu trả lời'
-                });
+            case 'text_input': {
+                answer = textAnswer.trim();
+                if (!answer) {
+                    Toast.show({ type: 'warning', text1: 'Vui lòng nhập câu trả lời' });
+                    return;
+                }
+                break;
+            }
+            case 'audio_input': {
+                answer = textAnswer.trim();
+                if (!answer) {
+                    Toast.show({ type: 'warning', text1: 'Vui lòng nhập câu trả lời' });
+                    return;
+                }
+                break;
+            }
+            default: {
+                Toast.show({ type: 'error', text1: 'Loại câu hỏi không được hỗ trợ' });
                 return;
             }
         }
+
+        const isCorrect = answer === currentQuestion.correctAnswer;
+        const questionScore = isCorrect ? currentQuestion.score : 0;
+
         const result = {
             questionId: currentQuestion._id,
             answer,
-            isCorrect: false,
-            isTimeout: false
+            isCorrect,
+            isTimeout: false,
+            score: questionScore,
         };
+
+        const newResults = [...questionResults, result];
+        setQuestionResults(newResults);
+        moveToNextOrComplete(newResults);
+    };
+
+    const moveToNextOrComplete = async (newResults: QuestionResult[]) => {
         setTextAnswer('');
         setSelectedAnswer('');
-        if (currentQuestionIndex < currentLesson.questions.length - 1) {
-            setQuestionResults(prev => [...prev, result]);
-            setCurrentQuestionIndex(prev => prev + 1);
+
+        if (currentLesson && currentQuestionIndex < currentLesson.questions.length - 1) {
+            setCurrentQuestionIndex((prev) => prev + 1);
         } else {
-            handleSubmitLesson([...questionResults, result]);
+            try {
+                const totalScore = newResults.reduce((sum, result) => sum + (result.score || 0), 0);
+
+                const cleanResults: QuestionSubmission[] = newResults.map((r) => ({
+                    questionId: r.questionId,
+                    answer: r.answer || '[TIMEOUT]',
+                    isCorrect: r.isCorrect,
+                    isTimeout: r.isTimeout,
+                }));
+
+                const response = await dispatch(
+                    completeLesson({
+                        lessonId,
+                        score: totalScore,
+                        questionResults: cleanResults,
+                        isRetried: false,
+                    })
+                ).unwrap();
+
+                const apiResults = response.progress.questionResults as any[];
+                const processedResults: QuestionResultWithScore[] = apiResults.map((r) => ({
+                    questionId: r.questionId,
+                    answer: r.answer,
+                    isCorrect: r.isCorrect,
+                    isTimeout: r.isTimeout,
+                    score: r.score || 0,
+                    feedback: r.feedback || null,
+                    transcription: r.transcription || null,
+                    _id: r._id || '',
+                }));
+
+                navigation.navigate('LessonComplete', {
+                    lessonId,
+                    score: response.progress.score,
+                    questionResults: processedResults,
+                    isRetried: false,
+                });
+            } catch (error: any) {
+                Toast.show({
+                    type: 'error',
+                    text1: 'Không thể hoàn thành bài học',
+                    text2: error?.message || 'Vui lòng thử lại',
+                });
+            }
         }
     };
 
     const handleOptionSelect = (questionId: string, answer: string) => {
         setSelectedAnswer(answer);
-    };
-
-    const handleSubmitLesson = (results: any[]) => {
-        if (!currentLesson || isSubmitting) return;
-        setIsSubmitting(true);
-        // Đảm bảo số lượng câu trả lời đúng bằng số câu hỏi
-        if (results.length !== currentLesson.questions.length) {
-            Toast.show({
-                type: 'error',
-                text1: 'Số lượng câu trả lời không khớp số câu hỏi!'
-            });
-            setIsSubmitting(false);
-            return;
-        }
-        // Dọn sạch kết quả, chỉ giữ đúng 4 trường
-        const cleanResults = results.map(q => ({
-            questionId: q.questionId,
-            answer: q.answer,
-            isCorrect: false,
-            isTimeout: !!q.isTimeout
-        }));
-        navigation.navigate('LessonComplete', {
-            lessonId,
-            score: 0,
-            questionResults: cleanResults,
-            isRetried: false
-        });
-        setIsSubmitting(false);
     };
 
     const formatTime = (seconds: number) => {
@@ -209,7 +314,7 @@ const LessonQuizScreen = () => {
         return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
     };
 
-    if (loading || !currentLesson) {
+    if (loading || !currentLesson || !isInitialized) {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#58CC02" />
@@ -231,8 +336,8 @@ const LessonQuizScreen = () => {
                             'Thoát bài học',
                             'Bạn có chắc muốn thoát? Tiến độ bài học sẽ không được lưu.',
                             [
-                                { text: 'Hủy', style: 'cancel', onPress: () => { } },
-                                { text: 'Thoát', style: 'destructive', onPress: () => navigation.navigate('UserHome') }
+                                { text: 'Hủy', style: 'cancel', onPress: () => {} },
+                                { text: 'Thoát', style: 'destructive', onPress: () => navigation.navigate('UserHome') },
                             ]
                         );
                     }}
@@ -246,8 +351,8 @@ const LessonQuizScreen = () => {
                             style={[
                                 styles.progressFill,
                                 {
-                                    width: `${((currentQuestionIndex + 1) / currentLesson.questions.length) * 100}%`
-                                }
+                                    width: `${((currentQuestionIndex + 1) / currentLesson.questions.length) * 100}%`,
+                                },
                             ]}
                         />
                     </View>
@@ -257,13 +362,11 @@ const LessonQuizScreen = () => {
                 </View>
 
                 <View style={styles.timerContainer}>
-                    <Text style={styles.timerText}>
-                        ⏱️ {formatTime(remainingTime)}
-                    </Text>
+                    <Text style={styles.timerText}>⏱️ {formatTime(remainingTime)}</Text>
                 </View>
             </View>
 
-            <ScrollView style={styles.content}>
+            <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
                 {/* Question */}
                 <View style={styles.questionContainer}>
                     <Text style={styles.questionText}>{currentQuestion.content}</Text>
@@ -276,14 +379,14 @@ const LessonQuizScreen = () => {
                                     key={index}
                                     style={[
                                         styles.optionButton,
-                                        selectedAnswer === option && styles.optionSelected
+                                        selectedAnswer === option && styles.optionSelected,
                                     ]}
                                     onPress={() => handleOptionSelect(currentQuestion._id, option)}
                                 >
                                     <Text
                                         style={[
                                             styles.optionText,
-                                            selectedAnswer === option && styles.optionTextSelected
+                                            selectedAnswer === option && styles.optionTextSelected,
                                         ]}
                                     >
                                         {option}
@@ -310,7 +413,6 @@ const LessonQuizScreen = () => {
                             <Text style={styles.audioInputText}>
                                 🎤 Nhấn để ghi âm câu trả lời của bạn
                             </Text>
-                            {/* Audio recording UI would go here */}
                             <TextInput
                                 style={styles.textInput}
                                 placeholder="Nhập câu trả lời của bạn (tạm thời)..."
@@ -328,7 +430,7 @@ const LessonQuizScreen = () => {
                 <TouchableOpacity
                     style={styles.nextButton}
                     onPress={handleNextQuestion}
-                    disabled={isSubmitting}
+                    disabled={!isInitialized}
                 >
                     <Text style={styles.nextButtonText}>
                         {currentQuestionIndex < currentLesson.questions.length - 1 ? 'Tiếp tục' : 'Hoàn thành'}
@@ -348,36 +450,48 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        padding: scale(16),
     },
     loadingText: {
-        marginTop: 16,
-        fontSize: 16,
+        marginTop: scale(16),
+        fontSize: scale(16),
         color: '#4b4b4b',
+        textAlign: 'center',
     },
     header: {
+        paddingTop: scale(8),  // giảm padding top xuống mức thấp hơn
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingHorizontal: scale(12),
+        paddingVertical: scale(6),  // giảm vertical để không cao
         borderBottomWidth: 1,
         borderBottomColor: '#e0e0e0',
-    },
+        backgroundColor: '#fff',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 4,
+    },        
     backButton: {
-        padding: 8,
+        padding: scale(6),
+        borderRadius: scale(8),
+        backgroundColor: '#f5f5f5',
     },
     backButtonText: {
-        fontSize: 24,
+        fontSize: scale(20),
         color: '#4b4b4b',
+        fontWeight: '600',
     },
     progressContainer: {
         flex: 1,
-        marginHorizontal: 12,
+        marginHorizontal: scale(8),
     },
     progressBar: {
-        height: 8,
+        height: scale(8),
         backgroundColor: '#f0f0f0',
-        borderRadius: 4,
+        borderRadius: scale(4),
         overflow: 'hidden',
     },
     progressFill: {
@@ -386,98 +500,152 @@ const styles = StyleSheet.create({
     },
     progressText: {
         textAlign: 'center',
-        fontSize: 12,
+        fontSize: scale(12),
         color: '#4b4b4b',
-        marginTop: 4,
+        marginTop: scale(4),
+        fontWeight: '600',
     },
     timerContainer: {
         backgroundColor: '#FFF8E6',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 16,
+        paddingHorizontal: scale(10),
+        paddingVertical: scale(6),
+        borderRadius: scale(12),
+        borderWidth: 1,
+        borderColor: '#FFE0B2',
+        minWidth: scale(70),
+        alignItems: 'center',
     },
     timerText: {
-        fontSize: 14,
+        fontSize: scale(14),
         color: '#FF9600',
         fontWeight: 'bold',
     },
     content: {
         flex: 1,
-        padding: 16,
+        paddingHorizontal: scale(12),
+    },
+    contentContainer: {
+        paddingVertical: scale(8),
+        flexGrow: 1,
     },
     questionContainer: {
-        marginBottom: 24,
+        backgroundColor: '#fff',
+        borderRadius: scale(12),
+        padding: scale(12),
+        marginBottom: scale(8),
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 4,
+        width: '100%',
     },
     questionText: {
-        fontSize: 18,
+        fontSize: scale(16),
         fontWeight: 'bold',
         color: '#333',
-        marginBottom: 20,
+        marginBottom: scale(10),
+        lineHeight: scale(22),
+        textAlign: 'left',
     },
     optionsContainer: {
-        marginTop: 8,
+        marginTop: scale(4),
+        width: '100%',
     },
     optionButton: {
         backgroundColor: '#f5f5f5',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
+        borderRadius: scale(10),
+        padding: scale(12),
+        marginBottom: scale(6),
         borderWidth: 2,
         borderColor: '#e0e0e0',
+        flexDirection: 'row',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+        width: '100%',
     },
     optionSelected: {
         backgroundColor: '#E6F8E0',
         borderColor: '#58CC02',
     },
     optionText: {
-        fontSize: 16,
+        fontSize: scale(15),
         color: '#333',
+        flex: 1,
+        paddingRight: scale(8),
     },
     optionTextSelected: {
         fontWeight: 'bold',
         color: '#58CC02',
     },
     inputContainer: {
-        marginTop: 16,
+        marginTop: scale(8),
+        width: '100%',
     },
     textInput: {
         backgroundColor: '#f5f5f5',
-        borderRadius: 12,
+        borderRadius: scale(10),
         borderWidth: 2,
         borderColor: '#e0e0e0',
-        padding: 16,
-        fontSize: 16,
-        minHeight: 120,
+        padding: scale(12),
+        fontSize: scale(15),
+        minHeight: scale(100),
         textAlignVertical: 'top',
+        color: '#333',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+        width: '100%',
     },
     audioInputContainer: {
-        marginTop: 16,
+        marginTop: scale(8),
         alignItems: 'center',
+        width: '100%',
     },
     audioInputText: {
-        fontSize: 16,
+        fontSize: scale(15),
         color: '#4b4b4b',
-        marginBottom: 16,
+        marginBottom: scale(8),
+        textAlign: 'center',
     },
     bottomContainer: {
-        padding: 16,
+        padding: scale(12),
         borderTopWidth: 1,
         borderTopColor: '#e0e0e0',
+        backgroundColor: '#fff',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 8,
+        width: '100%',
     },
     nextButton: {
         backgroundColor: '#58CC02',
-        borderRadius: 16,
-        padding: 16,
+        borderRadius: scale(12),
+        padding: scale(14),
         alignItems: 'center',
         justifyContent: 'center',
         borderBottomWidth: 4,
         borderBottomColor: '#4BA502',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 8,
+        width: '100%',
     },
     nextButtonText: {
         color: 'white',
-        fontSize: 18,
+        fontSize: scale(16),
         fontWeight: 'bold',
     },
 });
 
-export default LessonQuizScreen; 
+export default LessonQuizScreen;
