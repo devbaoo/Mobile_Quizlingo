@@ -4,8 +4,8 @@ import {
   ILesson,
   ILessonResponse,
   LessonProgress,
-  QuestionResult,
-  UserProgress,
+  QuestionSubmission,
+  UserProgress
 } from "@/types/lesson.type";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import Toast from "react-native-toast-message";
@@ -75,31 +75,39 @@ export const completeLesson = createAsyncThunk<
   {
     lessonId: string;
     score: number;
-    questionResults: QuestionResult[];
+    questionResults: QuestionSubmission[];
     isRetried: boolean;
   },
   { rejectValue: { message: string } }
 >("lesson/completeLesson", async (data, { rejectWithValue }) => {
   try {
-    // Ensure payload is in the required format
-    const payload = {
-      lessonId: data.lessonId,
-      score: data.score,
-      isRetried: data.isRetried,
-      questionResults: data.questionResults.map((result) => ({
-        questionId: result.questionId,
-        answer: result.answer,
-        isCorrect: result.isCorrect,
-        isTimeout: result.isTimeout,
-      })),
-    };
-
+    
     const response = await axiosInstance.post(
       ENDPOINTS.LESSON.COMPLETE,
-      payload
+      {
+        lessonId: data.lessonId,
+        score: data.score,
+        isRetried: data.isRetried,
+        questionResults: data.questionResults
+      }
     );
-    return response.data;
+
+
+    if (!response.data.success) {
+      return rejectWithValue({ message: response.data.message });
+    }
+
+    return {
+      progress: response.data.progress,
+      user: response.data.user,
+      status: response.data.status
+    };
   } catch (err: any) {
+    console.error('Complete lesson error:', {
+      message: err.message,
+      response: err.response?.data,
+      status: err.response?.status
+    });
     const message = err.response?.data?.message || "Failed to complete lesson";
     if (message === "Bài học đã được hoàn thành trước đó") {
       Toast.show({

@@ -1,5 +1,6 @@
-import { clearCurrentLesson, completeLesson } from '@/services/slices/lesson/lessonSlice';
+import { clearCurrentLesson } from '@/services/slices/lesson/lessonSlice';
 import { AppDispatch, RootState } from '@/services/store/store';
+import { QuestionResultWithScore } from '@/types/lesson.type';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useEffect, useState } from 'react';
@@ -22,12 +23,7 @@ type RootStackParamList = {
     LessonComplete: {
         lessonId: string,
         score: number,
-        questionResults: {
-            questionId: string;
-            answer: string;
-            isCorrect: boolean;
-            isTimeout: boolean;
-        }[],
+        questionResults: QuestionResultWithScore[],
         isRetried: boolean
     };
     UserHome: undefined;
@@ -43,8 +39,9 @@ const LessonCompleteScreen = () => {
     const { lessonId, score, questionResults, isRetried } = route.params;
     const { currentLesson, loading, progress, userProgress } = useSelector((state: RootState) => state.lesson);
 
-    const [submitting, setSubmitting] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
+    const [hasSubmitted, setHasSubmitted] = useState(false);
 
     // Prevent going back with hardware back button
     useEffect(() => {
@@ -60,31 +57,12 @@ const LessonCompleteScreen = () => {
         return () => backHandler.remove();
     }, [navigation]);
 
-    // Submit lesson results on component mount
+    // Cleanup function when navigating away
     useEffect(() => {
-        const submitLesson = async () => {
-            try {
-                await dispatch(completeLesson({
-                    lessonId,
-                    score,
-                    isRetried,
-                    questionResults
-                })).unwrap();
-                setSubmitting(false);
-            } catch (error: any) {
-                console.error('Failed to submit lesson:', error);
-                setSubmitError(error?.message || 'Không thể hoàn thành bài học');
-                setSubmitting(false);
-            }
-        };
-
-        submitLesson();
-
-        // Cleanup function to clear current lesson when navigating away
         return () => {
             dispatch(clearCurrentLesson());
         };
-    }, [dispatch, lessonId, score, questionResults, isRetried]);
+    }, [dispatch]);
 
     const handleContinue = () => {
         navigation.reset({
@@ -109,11 +87,11 @@ const LessonCompleteScreen = () => {
         }
     };
 
-    if (submitting) {
+    if (loading) {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#58CC02" />
-                <Text style={styles.loadingText}>Đang hoàn thành bài học...</Text>
+                <Text style={styles.loadingText}>Đang tải kết quả...</Text>
             </View>
         );
     }
@@ -127,7 +105,7 @@ const LessonCompleteScreen = () => {
                     <Text style={styles.errorMessage}>{submitError}</Text>
                     <TouchableOpacity
                         style={styles.continueButton}
-                        onPress={handleContinue}
+                        onPress={() => navigation.navigate('UserHome')}
                     >
                         <Text style={styles.continueButtonText}>Quay về trang chủ</Text>
                     </TouchableOpacity>
@@ -147,7 +125,7 @@ const LessonCompleteScreen = () => {
                     <View style={styles.scoreContainer}>
                         <Text style={styles.scoreLabel}>Điểm số của bạn</Text>
                         <View style={styles.scoreCircle}>
-                            <Text style={styles.scoreValue}>{progress?.score || score}</Text>
+                            <Text style={styles.scoreValue}>{score}</Text>
                             <Text style={styles.scoreMax}>/{currentLesson?.maxScore || 100}</Text>
                         </View>
                     </View>
@@ -170,10 +148,10 @@ const LessonCompleteScreen = () => {
                     )}
                 </View>
 
-                {progress && progress.questionResults && (
+                {questionResults && questionResults.length > 0 && (
                     <View style={styles.questionsContainer}>
                         <Text style={styles.questionsTitle}>Chi tiết câu trả lời</Text>
-                        {progress.questionResults.map((result, index) => (
+                        {questionResults.map((result, index) => (
                             <View key={index} style={styles.questionResult}>
                                 <View style={styles.questionResultHeader}>
                                     <Text style={styles.questionNumber}>Câu {index + 1}</Text>
@@ -195,11 +173,11 @@ const LessonCompleteScreen = () => {
                                 </View>
                                 <View style={styles.answerContainer}>
                                     <Text style={styles.answerLabel}>Câu trả lời của bạn:</Text>
-                                    <Text style={styles.answerText}>{result.answer}</Text>
+                                    <Text style={styles.answerText}>{result.answer || '[Không có câu trả lời]'}</Text>
                                 </View>
                                 {result.feedback && (
                                     <View style={styles.feedbackContainer}>
-                                        <Text style={styles.feedbackLabel}>Phản hồi:</Text>
+                                        <Text style={styles.feedbackLabel}>Nhận xét của AI:</Text>
                                         <Text style={styles.feedbackText}>{result.feedback}</Text>
                                     </View>
                                 )}
@@ -238,115 +216,128 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     loadingText: {
-        marginTop: 16,
-        fontSize: 16,
+        marginTop: 20,
+        fontSize: 18,
         color: '#4b4b4b',
     },
     errorContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 24,
+        padding: 32,
     },
     errorIcon: {
-        fontSize: 48,
-        marginBottom: 16,
+        fontSize: 64,
+        marginBottom: 24,
     },
     errorTitle: {
-        fontSize: 24,
+        fontSize: 28,
         fontWeight: 'bold',
         color: '#d32f2f',
-        marginBottom: 8,
+        marginBottom: 16,
     },
     errorMessage: {
-        fontSize: 16,
+        fontSize: 18,
         color: '#4b4b4b',
         textAlign: 'center',
-        marginBottom: 24,
+        marginBottom: 32,
     },
     scrollContent: {
         padding: 16,
     },
     header: {
         alignItems: 'center',
-        marginVertical: 24,
+        marginVertical: 20,
     },
     headerTitle: {
-        fontSize: 24,
+        fontSize: 32,
         fontWeight: 'bold',
         color: '#58CC02',
         textAlign: 'center',
+        paddingHorizontal: 16,
     },
     resultCard: {
         backgroundColor: '#f9f9f9',
-        borderRadius: 16,
-        padding: 16,
+        borderRadius: 24,
+        padding: 24,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
-        marginBottom: 24,
+        shadowRadius: 8,
+        elevation: 4,
+        marginBottom: 20,
     },
     scoreContainer: {
         alignItems: 'center',
         marginBottom: 16,
     },
     scoreLabel: {
-        fontSize: 16,
+        fontSize: 20,
         color: '#4b4b4b',
-        marginBottom: 8,
+        marginBottom: 12,
     },
     scoreCircle: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
+        width: 160,
+        height: 160,
+        borderRadius: 80,
         backgroundColor: '#58CC02',
         justifyContent: 'center',
         alignItems: 'center',
         flexDirection: 'row',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 8,
     },
     scoreValue: {
-        fontSize: 32,
+        fontSize: 48,
         fontWeight: 'bold',
         color: 'white',
     },
     scoreMax: {
-        fontSize: 18,
+        fontSize: 24,
         color: 'rgba(255, 255, 255, 0.8)',
+        marginTop: 8,
     },
     statsContainer: {
         flexDirection: 'row',
         justifyContent: 'space-around',
         borderTopWidth: 1,
         borderTopColor: '#e0e0e0',
-        paddingTop: 16,
+        paddingTop: 24,
+        marginTop: 8,
     },
     statItem: {
         alignItems: 'center',
+        flex: 1,
+        paddingHorizontal: 16,
     },
     statValue: {
-        fontSize: 20,
+        fontSize: 28,
         fontWeight: 'bold',
         color: '#3B82F6',
+        marginBottom: 8,
     },
     statLabel: {
-        fontSize: 14,
+        fontSize: 16,
         color: '#4b4b4b',
+        textAlign: 'center',
     },
     questionsContainer: {
-        marginBottom: 24,
+        marginBottom: 20,
     },
     questionsTitle: {
-        fontSize: 18,
+        fontSize: 24,
         fontWeight: 'bold',
         color: '#333',
         marginBottom: 16,
+        paddingHorizontal: 8,
     },
     questionResult: {
         backgroundColor: '#f9f9f9',
-        borderRadius: 12,
-        padding: 16,
+        borderRadius: 16,
+        padding: 20,
         marginBottom: 12,
         borderWidth: 1,
         borderColor: '#e0e0e0',
@@ -355,17 +346,17 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: 16,
     },
     questionNumber: {
-        fontSize: 16,
+        fontSize: 20,
         fontWeight: 'bold',
         color: '#333',
     },
     resultBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
     },
     correctBadge: {
         backgroundColor: '#E6F8E0',
@@ -374,7 +365,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFEBEE',
     },
     resultBadgeText: {
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: 'bold',
     },
     correctBadgeText: {
@@ -384,62 +375,80 @@ const styles = StyleSheet.create({
         color: '#d32f2f',
     },
     answerContainer: {
-        marginBottom: 8,
+        marginBottom: 16,
     },
     answerLabel: {
-        fontSize: 14,
+        fontSize: 16,
         color: '#4b4b4b',
-        marginBottom: 4,
+        marginBottom: 8,
     },
     answerText: {
-        fontSize: 16,
+        fontSize: 18,
         color: '#333',
+        backgroundColor: '#fff',
+        padding: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
     },
     feedbackContainer: {
-        marginTop: 8,
+        marginTop: 16,
+        padding: 16,
+        backgroundColor: '#F0F8FF',
+        borderRadius: 12,
+        borderLeftWidth: 4,
+        borderLeftColor: '#3B82F6',
     },
     feedbackLabel: {
-        fontSize: 14,
-        color: '#4b4b4b',
-        marginBottom: 4,
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#3B82F6',
+        marginBottom: 8,
     },
     feedbackText: {
         fontSize: 16,
         color: '#333',
+        lineHeight: 24,
     },
     transcriptionContainer: {
-        marginTop: 8,
-        padding: 8,
+        marginTop: 16,
+        padding: 16,
         backgroundColor: '#f0f0f0',
-        borderRadius: 8,
+        borderRadius: 12,
     },
     transcriptionLabel: {
-        fontSize: 14,
+        fontSize: 16,
         color: '#4b4b4b',
-        marginBottom: 4,
+        marginBottom: 8,
     },
     transcriptionText: {
-        fontSize: 16,
+        fontSize: 18,
         color: '#333',
         fontStyle: 'italic',
     },
     footer: {
-        padding: 16,
+        padding: 24,
         borderTopWidth: 1,
         borderTopColor: '#e0e0e0',
+        backgroundColor: '#fff',
     },
     continueButton: {
         backgroundColor: '#58CC02',
-        borderRadius: 16,
-        padding: 16,
+        borderRadius: 20,
+        padding: 20,
         alignItems: 'center',
         justifyContent: 'center',
         borderBottomWidth: 4,
         borderBottomColor: '#4BA502',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 8,
     },
     continueButtonText: {
         color: 'white',
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: 'bold',
     },
 });
