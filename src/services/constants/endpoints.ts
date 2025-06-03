@@ -11,4 +11,15 @@ export const ENDPOINTS = {
     REFRESH_TOKEN: "/auth/refresh-token",
     RESEND_VERIFICATION: "/auth/resend-verification",
   },
+  LESSON: {
+    GET_ALL: "/lessons",
+    GET_BY_ID: (id: string) => `/lessons/${id}`,
+    COMPLETE: "/lessons/complete",
+    RETRY: "/lessons/retry",
+  },
+  USER: {
+    GET_PROFILE: "/users/profile",
+    UPDATE_PROFILE: "/users/profile",
+    UPDATE_AVATAR: "/users/profile/avatar",
+  },
 };
