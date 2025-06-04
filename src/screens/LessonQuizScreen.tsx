@@ -61,7 +61,7 @@ const LessonQuizScreen = () => {
                 'Thoát bài học',
                 'Bạn có chắc muốn thoát? Tiến độ bài học sẽ không được lưu.',
                 [
-                    { text: 'Hủy', style: 'cancel', onPress: () => {} },
+                    { text: 'Hủy', style: 'cancel', onPress: () => { } },
                     { text: 'Thoát', style: 'destructive', onPress: () => navigation.navigate('UserHome') },
                 ]
             );
@@ -329,40 +329,26 @@ const LessonQuizScreen = () => {
         <SafeAreaView style={styles.container}>
             {/* Header with timer and progress */}
             <View style={styles.header}>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => {
-                        Alert.alert(
-                            'Thoát bài học',
-                            'Bạn có chắc muốn thoát? Tiến độ bài học sẽ không được lưu.',
-                            [
-                                { text: 'Hủy', style: 'cancel', onPress: () => {} },
-                                { text: 'Thoát', style: 'destructive', onPress: () => navigation.navigate('UserHome') },
-                            ]
-                        );
-                    }}
-                >
-                    <Text style={styles.backButtonText}>←</Text>
-                </TouchableOpacity>
-
-                <View style={styles.progressContainer}>
-                    <View style={styles.progressBar}>
-                        <View
-                            style={[
-                                styles.progressFill,
-                                {
-                                    width: `${((currentQuestionIndex + 1) / currentLesson.questions.length) * 100}%`,
-                                },
-                            ]}
-                        />
+                {/* Progress bar và timer cùng hàng */}
+                <View style={styles.progressRow}>
+                    <View style={styles.progressContainerHeader}>
+                        <View style={styles.progressBar}>
+                            <View
+                                style={[
+                                    styles.progressFill,
+                                    {
+                                        width: `${((currentQuestionIndex + 1) / currentLesson.questions.length) * 100}%`,
+                                    },
+                                ]}
+                            />
+                        </View>
+                        <Text style={styles.progressText}>
+                            {currentQuestionIndex + 1}/{currentLesson.questions.length}
+                        </Text>
                     </View>
-                    <Text style={styles.progressText}>
-                        {currentQuestionIndex + 1}/{currentLesson.questions.length}
-                    </Text>
-                </View>
-
-                <View style={styles.timerContainer}>
-                    <Text style={styles.timerText}>⏱️ {formatTime(remainingTime)}</Text>
+                    <View style={styles.timerContainerHeader}>
+                        <Text style={styles.timerText}>⏱️ {formatTime(remainingTime)}</Text>
+                    </View>
                 </View>
             </View>
 
@@ -459,34 +445,42 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     header: {
-        paddingTop: scale(8),  // giảm padding top xuống mức thấp hơn
+        paddingTop: scale(0),  // giảm padding top tối đa
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: scale(12),
-        paddingVertical: scale(6),  // giảm vertical để không cao
-        borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
+        paddingVertical: scale(2),  // giảm vertical để không cao
+        borderBottomWidth: 0,
         backgroundColor: '#fff',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
-        elevation: 4,
-    },        
-    backButton: {
-        padding: scale(6),
-        borderRadius: scale(8),
-        backgroundColor: '#f5f5f5',
+        elevation: 2,
     },
-    backButtonText: {
-        fontSize: scale(20),
-        color: '#4b4b4b',
-        fontWeight: '600',
-    },
-    progressContainer: {
+    progressRow: {
         flex: 1,
-        marginHorizontal: scale(8),
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginLeft: scale(8),
+        marginTop: scale(40),
+    },
+    progressContainerHeader: {
+        flex: 1,
+        marginRight: scale(8),
+    },
+    timerContainerHeader: {
+        backgroundColor: '#FFF8E6',
+        paddingHorizontal: scale(10),
+        paddingVertical: scale(6),
+        borderRadius: scale(12),
+        borderWidth: 1,
+        borderColor: '#FFE0B2',
+        minWidth: scale(70),
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     progressBar: {
         height: scale(8),
@@ -505,16 +499,6 @@ const styles = StyleSheet.create({
         marginTop: scale(4),
         fontWeight: '600',
     },
-    timerContainer: {
-        backgroundColor: '#FFF8E6',
-        paddingHorizontal: scale(10),
-        paddingVertical: scale(6),
-        borderRadius: scale(12),
-        borderWidth: 1,
-        borderColor: '#FFE0B2',
-        minWidth: scale(70),
-        alignItems: 'center',
-    },
     timerText: {
         fontSize: scale(14),
         color: '#FF9600',
@@ -525,14 +509,15 @@ const styles = StyleSheet.create({
         paddingHorizontal: scale(12),
     },
     contentContainer: {
-        paddingVertical: scale(8),
+        paddingTop: scale(40), // tăng padding top để dịch toàn bộ nội dung xuống thêm nữa, tránh bị che và cân đối hơn
+        paddingBottom: scale(12),
         flexGrow: 1,
     },
     questionContainer: {
         backgroundColor: '#fff',
         borderRadius: scale(12),
-        padding: scale(12),
-        marginBottom: scale(8),
+        padding: scale(16), // tăng padding để nội dung thoáng hơn
+        marginBottom: scale(12), // tăng margin để cách biệt với các phần khác
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
