@@ -22,4 +22,7 @@ export const ENDPOINTS = {
     UPDATE_PROFILE: "/users/profile",
     UPDATE_AVATAR: "/users/profile/avatar",
   },
+  LEADERBOARD: {
+    GET_ALL: "/leaderboard",
+  },
 };

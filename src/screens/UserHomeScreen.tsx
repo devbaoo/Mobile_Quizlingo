@@ -1,3 +1,4 @@
+import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import SidebarOverlay from '@/components/SidebarOverlay';
 import { fetchLessons, retryLesson } from '@/services/slices/lesson/lessonSlice';
@@ -11,8 +12,6 @@ import {
     ActivityIndicator,
     Alert,
     Animated,
-    Image,
-    Platform,
     RefreshControl,
     SafeAreaView,
     ScrollView,
@@ -28,6 +27,7 @@ import { useDispatch, useSelector } from 'react-redux';
 type RootStackParamList = {
     LessonQuiz: { lessonId: string };
     UserHome: undefined;
+    Leaderboard: undefined;
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -242,38 +242,10 @@ const UserHomeScreen = () => {
             <StatusBar backgroundColor="#fff" barStyle="dark-content" />
 
             {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity
-                    style={styles.profileSection}
-                    onPress={toggleSidebar}
-                    activeOpacity={0.7}
-                >
-                    <View style={styles.avatarContainer}>
-                        {profile?.avatar ? (
-                            <Image source={{ uri: profile.avatar }} style={styles.avatarImage} />
-                        ) : (
-                            <Text style={styles.avatarText}>
-                                {profile?.firstName?.[0]}{profile?.lastName?.[0] || '👤'}
-                            </Text>
-                        )}
-                    </View>
-                    <View>
-                        <Text style={styles.userName} numberOfLines={1}>
-                            {profile?.firstName} {profile?.lastName || 'Học viên'}
-                        </Text>
-                        <View style={styles.levelContainer}>
-                            <Text style={styles.levelText}>Cấp {profile?.userLevel || 1}</Text>
-                            <View style={styles.xpContainer}>
-                                <Text style={styles.xpText}>{profile?.xp || 0} XP</Text>
-                            </View>
-                        </View>
-                    </View>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.streakContainer} activeOpacity={0.7}>
-                    <Text style={styles.streakIcon}>🔥</Text>
-                    <Text style={styles.streakText}>{profile?.streak || 0}</Text>
-                </TouchableOpacity>
-            </View>
+            <Header
+                user={profile}
+                onProfilePress={toggleSidebar}
+            />
 
             <ScrollView
                 style={styles.scrollView}
@@ -388,95 +360,6 @@ const styles = StyleSheet.create({
         marginTop: 16,
         fontSize: 16,
         color: '#4b4b4b',
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
-        elevation: 2,
-        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight || 24 : 24,
-    },
-    profileSection: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    avatarContainer: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: '#DDF4FF',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12,
-        borderWidth: 2,
-        borderColor: '#1CB0F6',
-    },
-    avatarImage: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        resizeMode: 'cover',
-    },
-    avatarText: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#0073e6',
-    },
-    userName: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#4b4b4b',
-        maxWidth: 120,
-    },
-    levelContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 2,
-    },
-    levelText: {
-        fontSize: 14,
-        color: '#777',
-        marginRight: 8,
-    },
-    xpContainer: {
-        backgroundColor: '#FFC800',
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 10,
-    },
-    xpText: {
-        fontSize: 12,
-        color: '#4b4b4b',
-        fontWeight: 'bold',
-    },
-    streakContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFECEC',
-        paddingHorizontal: 14,
-        paddingVertical: 7,
-        borderRadius: 18,
-        borderWidth: 1,
-        borderColor: '#FF4B4B',
-        shadowColor: '#FF4B4B',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    streakIcon: {
-        fontSize: 18,
-        marginRight: 4,
-    },
-    streakText: {
-        fontSize: 15,
-        fontWeight: 'bold',
-        color: '#FF4B4B',
     },
     scrollView: {
         flex: 1,
