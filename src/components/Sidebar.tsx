@@ -10,6 +10,7 @@ import { useDispatch } from 'react-redux';
 type RootStackParamList = {
     Login: undefined;
     UserHome: undefined;
+    Leaderboard: undefined;
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -122,7 +123,10 @@ const Sidebar = ({ user, onClose, isOpen }: SidebarProps) => {
 
                 <TouchableOpacity
                     style={styles.menuItem}
-                    onPress={() => { onClose(); }}
+                    onPress={() => {
+                        navigation.navigate('Leaderboard');
+                        onClose();
+                    }}
                 >
                     <View style={[styles.menuIcon, styles.rankingIcon]}>
                         <Text style={styles.iconText}>🏆</Text>

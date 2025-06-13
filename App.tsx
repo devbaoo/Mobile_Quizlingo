@@ -1,3 +1,4 @@
+import LeaderboardScreen from '@/screens/LeaderboardScreen';
 import LessonCompleteScreen from '@/screens/LessonCompleteScreen';
 import LessonQuizScreen from '@/screens/LessonQuizScreen';
 import { persistor, store } from '@/services/store/store';
@@ -135,6 +136,7 @@ export default function App() {
                             <Stack.Screen name="UserHome" component={UserHomeScreen} />
                             <Stack.Screen name="LessonQuiz" component={LessonQuizScreen} />
                             <Stack.Screen name="LessonComplete" component={LessonCompleteScreen} />
+                            <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
                         </Stack.Navigator>
                     </NavigationContainer>
                     <Toast config={toastConfig} />
