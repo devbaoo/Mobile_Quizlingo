@@ -25,4 +25,13 @@ export const ENDPOINTS = {
   LEADERBOARD: {
     GET_ALL: "/leaderboard",
   },
+  PACKAGE: {
+    GET_ACTIVE: "/packages",
+    PURCHASE: "/packages/purchase",
+    CHECK_ACTIVE: "/packages/user/active",
+    CHECK_PAYMENT_STATUS: (transactionId: string) =>
+      `/packages/payment-status/${transactionId}`,
+    CANCEL_PAYMENT: (transactionId: string) =>
+      `/packages/cancel-payment/${transactionId}`,
+  },
 };
