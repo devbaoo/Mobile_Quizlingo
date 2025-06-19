@@ -89,7 +89,11 @@ export const purchasePackage = createAsyncThunk<
       packageId,
       paymentMethod: "payos",
     });
-    return res.data;
+    if (res.data && res.data.purchaseInfo && res.data.purchaseInfo.paymentUrl) {
+      return { paymentUrl: res.data.purchaseInfo.paymentUrl };
+    }
+    const message = res.data?.message || "Không nhận được link thanh toán";
+    return rejectWithValue({ message });
   } catch (err: any) {
     const message = err.response?.data?.message || "Lỗi khi mua gói";
     return rejectWithValue({ message });

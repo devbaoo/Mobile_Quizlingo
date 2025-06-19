@@ -46,7 +46,7 @@ const SubscriptionPackageScreen = () => {
 
     useEffect(() => {
         if (paymentUrl) {
-            Toast.show({ type: 'info', text1: 'Đang chuyển hướng đến trang thanh toán...' });
+            Toast.show({ type: 'info', text1: 'Đang chuyển hướng...' });
             setTimeout(() => {
                 Linking.openURL(paymentUrl);
                 dispatch(clearPurchaseState());
