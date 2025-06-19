@@ -11,6 +11,7 @@ type RootStackParamList = {
     Login: undefined;
     UserHome: undefined;
     Leaderboard: undefined;
+    ProfileDetail: undefined;
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -136,12 +137,15 @@ const Sidebar = ({ user, onClose, isOpen }: SidebarProps) => {
 
                 <TouchableOpacity
                     style={styles.menuItem}
-                    onPress={() => { onClose(); }}
+                    onPress={() => {
+                        navigation.navigate('ProfileDetail');
+                        onClose();
+                    }}
                 >
                     <View style={[styles.menuIcon, styles.supportIcon]}>
                         <Text style={styles.iconText}>📝</Text>
                     </View>
-                    <Text style={styles.menuText}>Hỗ trợ</Text>
+                    <Text style={styles.menuText}>Hồ sơ</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity

@@ -17,6 +17,7 @@ import { HomeScreen } from './src/screens/HomeScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { RegisterScreen } from './src/screens/RegisterScreen';
 import UserHomeScreen from './src/screens/UserHomeScreen';
+import ProfileScreen from '@/screens/ProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -137,6 +138,7 @@ export default function App() {
                             <Stack.Screen name="LessonQuiz" component={LessonQuizScreen} />
                             <Stack.Screen name="LessonComplete" component={LessonCompleteScreen} />
                             <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
+                            <Stack.Screen name="ProfileDetail" component={ProfileScreen} />
                         </Stack.Navigator>
                     </NavigationContainer>
                     <Toast config={toastConfig} />
