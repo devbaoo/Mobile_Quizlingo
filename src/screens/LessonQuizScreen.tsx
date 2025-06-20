@@ -85,7 +85,7 @@ const LessonQuizScreen = () => {
                 'Thoát bài học',
                 'Bạn có chắc muốn thoát? Tiến độ bài học sẽ không được lưu.',
                 [
-                    { text: 'Hủy', style: 'cancel', onPress: () => {} },
+                    { text: 'Hủy', style: 'cancel', onPress: () => { } },
                     { text: 'Thoát', style: 'destructive', onPress: () => navigation.navigate('UserHome') },
                 ]
             );
@@ -731,6 +731,26 @@ const LessonQuizScreen = () => {
 
                 <View style={styles.timerContainer}>
                     <Text style={styles.timerText}>⏱️ {formatTime(remainingTime)}</Text>
+                {/* Progress bar và timer cùng hàng */}
+                <View style={styles.progressRow}>
+                    <View style={styles.progressContainerHeader}>
+                        <View style={styles.progressBar}>
+                            <View
+                                style={[
+                                    styles.progressFill,
+                                    {
+                                        width: `${((currentQuestionIndex + 1) / currentLesson.questions.length) * 100}%`,
+                                    },
+                                ]}
+                            />
+                        </View>
+                        <Text style={styles.progressText}>
+                            {currentQuestionIndex + 1}/{currentLesson.questions.length}
+                        </Text>
+                    </View>
+                    <View style={styles.timerContainerHeader}>
+                        <Text style={styles.timerText}>⏱️ {formatTime(remainingTime)}</Text>
+                    </View>
                 </View>
             </View>
 
@@ -902,6 +922,7 @@ const styles = StyleSheet.create({
         color: '#4b4b4b',
     },
     header: {
+        paddingTop: scale(0),  // giảm padding top tối đa
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -918,10 +939,38 @@ const styles = StyleSheet.create({
     backButtonText: {
         fontSize: scale(20),
         color: '#4b4b4b',
+        paddingVertical: scale(2),  // giảm vertical để không cao
+        borderBottomWidth: 0,
+        backgroundColor: '#fff',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
-    progressContainer: {
+    progressRow: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginLeft: scale(8),
+        marginTop: scale(40),
+    },
+    progressContainerHeader: {
         flex: 1,
         marginHorizontal: scale(12),
+        marginRight: scale(8),
+    },
+    timerContainerHeader: {
+        backgroundColor: '#FFF8E6',
+        paddingHorizontal: scale(10),
+        paddingVertical: scale(6),
+        borderRadius: scale(12),
+        borderWidth: 1,
+        borderColor: '#FFE0B2',
+        minWidth: scale(70),
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     progressBar: {
         height: scale(8),
@@ -960,6 +1009,15 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         borderRadius: scale(16),
         padding: scale(16),
+        paddingTop: scale(40), // tăng padding top để dịch toàn bộ nội dung xuống thêm nữa, tránh bị che và cân đối hơn
+        paddingBottom: scale(12),
+        flexGrow: 1,
+    },
+    questionContainer: {
+        backgroundColor: '#fff',
+        borderRadius: scale(12),
+        padding: scale(16), // tăng padding để nội dung thoáng hơn
+        marginBottom: scale(12), // tăng margin để cách biệt với các phần khác
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,

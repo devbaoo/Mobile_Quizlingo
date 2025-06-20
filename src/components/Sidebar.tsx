@@ -10,6 +10,9 @@ import { useDispatch } from 'react-redux';
 type RootStackParamList = {
     Login: undefined;
     UserHome: undefined;
+    Leaderboard: undefined;
+    ProfileDetail: undefined;
+    SubscriptionPackage: undefined;
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -122,7 +125,10 @@ const Sidebar = ({ user, onClose, isOpen }: SidebarProps) => {
 
                 <TouchableOpacity
                     style={styles.menuItem}
-                    onPress={() => { onClose(); }}
+                    onPress={() => {
+                        navigation.navigate('Leaderboard');
+                        onClose();
+                    }}
                 >
                     <View style={[styles.menuIcon, styles.rankingIcon]}>
                         <Text style={styles.iconText}>🏆</Text>
@@ -132,12 +138,28 @@ const Sidebar = ({ user, onClose, isOpen }: SidebarProps) => {
 
                 <TouchableOpacity
                     style={styles.menuItem}
-                    onPress={() => { onClose(); }}
+                    onPress={() => {
+                        navigation.navigate('ProfileDetail');
+                        onClose();
+                    }}
                 >
                     <View style={[styles.menuIcon, styles.supportIcon]}>
                         <Text style={styles.iconText}>📝</Text>
                     </View>
-                    <Text style={styles.menuText}>Hỗ trợ</Text>
+                    <Text style={styles.menuText}>Hồ sơ</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => {
+                        navigation.navigate('SubscriptionPackage');
+                        onClose();
+                    }}
+                >
+                    <View style={[styles.menuIcon, { backgroundColor: '#e6f7ff' }]}>
+                        <Text style={styles.iconText}>💎</Text>
+                    </View>
+                    <Text style={styles.menuText}>Gói đăng ký</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity

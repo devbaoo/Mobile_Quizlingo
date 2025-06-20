@@ -47,3 +47,18 @@ export interface UserProfile {
   preferredTopics: string[];
   activePackage?: ActivePackage;
 }
+
+export interface LeaderboardEntry {
+  _id: string;
+  totalScore: number;
+  completedLessons: number;
+  firstName: string;
+  lastName: string;
+  avatar: string;
+  email: string;
+}
+
+export interface LeaderboardResponse {
+  success: boolean;
+  data: LeaderboardEntry[];
+}

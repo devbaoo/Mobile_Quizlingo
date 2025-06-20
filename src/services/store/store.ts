@@ -2,7 +2,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { persistReducer, persistStore } from "redux-persist";
 import authReducer from "../slices/auth/authSlice";
+import leaderboardReducer from "../slices/leaderboard/leaderboardSlice";
 import lessonReducer from "../slices/lesson/lessonSlice";
+import packageReducer from "../slices/package/packageSlice";
 import userReducer from "../slices/user/userSlice";
 
 const persistConfig = {
@@ -15,6 +17,8 @@ const rootReducer = combineReducers({
   auth: authReducer,
   lesson: lessonReducer,
   user: userReducer,
+  leaderboard: leaderboardReducer,
+  package: packageReducer,
   // Thêm các reducer khác ở đây
 });
 
