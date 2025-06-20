@@ -1,8 +1,10 @@
 import { axiosInstance } from "@/services/constants/axiosConfig";
 import { ENDPOINTS } from "@/services/constants/endpoints";
 import {
+  ILearningPathLesson,
+  ILearningPathPagination,
+  ILearningPathResponse,
   ILesson,
-  ILessonResponse,
   LessonProgress,
   QuestionSubmission,
   UserProgress
@@ -11,19 +13,14 @@ import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import Toast from "react-native-toast-message";
 
 interface LessonState {
-  lessons: ILesson[];
+  lessons: ILearningPathLesson[];
   currentLesson: ILesson | null;
   loading: boolean;
   error: string | null;
   progress: LessonProgress | null;
   userProgress: UserProgress | null;
   status: string | null;
-  pagination: {
-    currentPage: number;
-    pageSize: number;
-    totalTopics: number;
-    totalPages: number;
-  } | null;
+  pagination: ILearningPathPagination | null;
 }
 
 const initialState: LessonState = {
@@ -38,12 +35,12 @@ const initialState: LessonState = {
 };
 
 export const fetchLessons = createAsyncThunk<
-  ILessonResponse,
+  ILearningPathResponse,
   { page?: number; limit?: number },
   { rejectValue: { message: string } }
 >(
   "lesson/fetchLessons",
-  async ({ page = 1, limit = 3 }, { rejectWithValue }) => {
+  async ({ page = 1, limit = 5 }, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.get(
         `${ENDPOINTS.LESSON.GET_ALL}?page=${page}&limit=${limit}`
@@ -151,10 +148,7 @@ const lessonSlice = createSlice({
       })
       .addCase(fetchLessons.fulfilled, (state, action) => {
         state.loading = false;
-        const allLessons = action.payload.topics.flatMap((topicWithLessons) => {
-          return topicWithLessons.lessons;
-        });
-        state.lessons = allLessons;
+        state.lessons = action.payload.learningPath;
         state.pagination = action.payload.pagination;
         state.error = null;
       })
