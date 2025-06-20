@@ -8,7 +8,7 @@ import { ActivityIndicator, Button, Image, SafeAreaView, ScrollView, StyleSheet,
 import { launchImageLibrary } from "react-native-image-picker";
 import Toast from "react-native-toast-message";
 import Icon from "react-native-vector-icons/FontAwesome5";
-import Animated from 'react-native/Libraries/Animated/Animated';
+import { Animated } from 'react-native';
 import { useDispatch, useSelector } from "react-redux";
 
 const ProfileScreen = () => {
@@ -100,7 +100,7 @@ const ProfileScreen = () => {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
-      <Header user={profile} onProfilePress={toggleSidebar} />
+      <Header user={profile as any} onProfilePress={toggleSidebar} />
       <ScrollView contentContainerStyle={styles.container}>
         {/* Banner */}
         {profile.activePackage ? (
