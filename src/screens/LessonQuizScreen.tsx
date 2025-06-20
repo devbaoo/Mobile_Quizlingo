@@ -60,6 +60,7 @@ const LessonQuizScreen = () => {
     const { lessonId } = route.params;
     const { currentLesson, loading } = useSelector((state: RootState) => state.lesson);
 
+    // Reset currentQuestionIndex to 0 when component mounts
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [textAnswer, setTextAnswer] = useState('');
     const [selectedAnswer, setSelectedAnswer] = useState('');
@@ -77,6 +78,22 @@ const LessonQuizScreen = () => {
     const [isCanceling, setIsCanceling] = useState(false);
     const [questionAudio, setQuestionAudio] = useState<Audio.Sound | null>(null);
     const [isQuestionAudioPlaying, setIsQuestionAudioPlaying] = useState(false);
+
+    // Add effect to ensure currentQuestionIndex is 0 when lesson loads
+    useEffect(() => {
+        if (currentLesson) {
+            console.log('Lesson loaded, resetting question index');
+            setCurrentQuestionIndex(0);
+            setQuestionResults([]);
+            setSelectedAnswer('');
+            setTextAnswer('');
+        }
+    }, [currentLesson]);
+
+    // Add logging to track currentQuestionIndex changes
+    useEffect(() => {
+        console.log('Current question index changed:', currentQuestionIndex);
+    }, [currentQuestionIndex]);
 
     // Prevent accidental back button press
     useEffect(() => {
@@ -191,11 +208,60 @@ const LessonQuizScreen = () => {
         }
     };
 
+    // Initialize shuffled questions when lesson loads
+    useEffect(() => {
+        if (currentLesson) {
+            console.log('Initializing lesson:', {
+                lessonId: currentLesson._id,
+                questionCount: currentLesson.questions.length
+            });
+            
+            const shuffled = shuffleQuestionsAndOptions(currentLesson.questions);
+            console.log('Shuffled questions:', shuffled.map(q => ({
+                id: q._id,
+                type: q.type,
+                content: q.content.substring(0, 50)
+            })));
+            
+            // Batch all state updates together
+            const initialState = {
+                questions: shuffled,
+                questionIndex: 0,
+                results: [],
+                answer: '',
+                textInput: '',
+                initialized: true,
+                time: shuffled[0]?.timeLimit || 30
+            };
+
+            // Update all states at once
+            setShuffledQuestions(initialState.questions);
+            setCurrentQuestionIndex(initialState.questionIndex);
+            setQuestionResults(initialState.results);
+            setSelectedAnswer(initialState.answer);
+            setTextAnswer(initialState.textInput);
+            setRemainingTime(initialState.time);
+            setIsInitialized(initialState.initialized);
+
+            console.log('Initial state set:', {
+                questionIndex: initialState.questionIndex,
+                questionCount: initialState.questions.length,
+                firstQuestionId: initialState.questions[0]?._id
+            });
+        }
+    }, [currentLesson]);
+
     // Set timer for each question - only after initialization
     useEffect(() => {
-        if (!currentLesson || !isInitialized) return;
+        if (!currentLesson || !isInitialized || !shuffledQuestions.length) return;
+
         const currentQuestion = shuffledQuestions[currentQuestionIndex];
-        const initialTime = currentQuestion.timeLimit || 30; // default 30s if not set
+        console.log('Setting timer for question:', {
+            index: currentQuestionIndex,
+            questionId: currentQuestion._id
+        });
+
+        const initialTime = currentQuestion.timeLimit || 30;
         setRemainingTime(initialTime);
 
         // Cleanup any existing recording when moving to a new question
@@ -208,7 +274,7 @@ const LessonQuizScreen = () => {
         if (recordingTimeRef.current) {
             clearInterval(recordingTimeRef.current);
         }
-    }, [currentLesson, currentQuestionIndex, isInitialized]);
+    }, [currentLesson, currentQuestionIndex, isInitialized, shuffledQuestions]);
 
     // Timer countdown for each question - only after initialization
     useEffect(() => {
@@ -278,6 +344,7 @@ const LessonQuizScreen = () => {
 
     // Function to shuffle array
     const shuffleArray = <T,>(array: T[]): T[] => {
+        console.log('Shuffling array of length:', array.length);
         const newArray = [...array];
         for (let i = newArray.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -288,6 +355,7 @@ const LessonQuizScreen = () => {
 
     // Function to shuffle questions and their options
     const shuffleQuestionsAndOptions = (questions: IQuestion[]): ShuffledQuestion[] => {
+        console.log('Processing questions for shuffle:', questions.length);
         return questions.map(question => {
             if (question.type === 'multiple_choice') {
                 const shuffledOptions = shuffleArray(question.options);
@@ -303,14 +371,6 @@ const LessonQuizScreen = () => {
             };
         });
     };
-
-    // Initialize shuffled questions when lesson loads
-    useEffect(() => {
-        if (currentLesson) {
-            const shuffled = shuffleQuestionsAndOptions(currentLesson.questions);
-            setShuffledQuestions(shuffled);
-        }
-    }, [currentLesson]);
 
     // Start recording function
     const startRecording = async () => {
@@ -731,26 +791,6 @@ const LessonQuizScreen = () => {
 
                 <View style={styles.timerContainer}>
                     <Text style={styles.timerText}>⏱️ {formatTime(remainingTime)}</Text>
-                {/* Progress bar và timer cùng hàng */}
-                <View style={styles.progressRow}>
-                    <View style={styles.progressContainerHeader}>
-                        <View style={styles.progressBar}>
-                            <View
-                                style={[
-                                    styles.progressFill,
-                                    {
-                                        width: `${((currentQuestionIndex + 1) / currentLesson.questions.length) * 100}%`,
-                                    },
-                                ]}
-                            />
-                        </View>
-                        <Text style={styles.progressText}>
-                            {currentQuestionIndex + 1}/{currentLesson.questions.length}
-                        </Text>
-                    </View>
-                    <View style={styles.timerContainerHeader}>
-                        <Text style={styles.timerText}>⏱️ {formatTime(remainingTime)}</Text>
-                    </View>
                 </View>
             </View>
 
@@ -922,7 +962,7 @@ const styles = StyleSheet.create({
         color: '#4b4b4b',
     },
     header: {
-        paddingTop: scale(0),  // giảm padding top tối đa
+        paddingTop: scale(0),
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -939,38 +979,10 @@ const styles = StyleSheet.create({
     backButtonText: {
         fontSize: scale(20),
         color: '#4b4b4b',
-        paddingVertical: scale(2),  // giảm vertical để không cao
-        borderBottomWidth: 0,
-        backgroundColor: '#fff',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
     },
-    progressRow: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginLeft: scale(8),
-        marginTop: scale(40),
-    },
-    progressContainerHeader: {
+    progressContainer: {
         flex: 1,
         marginHorizontal: scale(12),
-        marginRight: scale(8),
-    },
-    timerContainerHeader: {
-        backgroundColor: '#FFF8E6',
-        paddingHorizontal: scale(10),
-        paddingVertical: scale(6),
-        borderRadius: scale(12),
-        borderWidth: 1,
-        borderColor: '#FFE0B2',
-        minWidth: scale(70),
-        alignItems: 'center',
-        justifyContent: 'center',
     },
     progressBar: {
         height: scale(8),
@@ -1009,15 +1021,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         borderRadius: scale(16),
         padding: scale(16),
-        paddingTop: scale(40), // tăng padding top để dịch toàn bộ nội dung xuống thêm nữa, tránh bị che và cân đối hơn
-        paddingBottom: scale(12),
-        flexGrow: 1,
-    },
-    questionContainer: {
-        backgroundColor: '#fff',
-        borderRadius: scale(12),
-        padding: scale(16), // tăng padding để nội dung thoáng hơn
-        marginBottom: scale(12), // tăng margin để cách biệt với các phần khác
+        paddingTop: scale(40),
+        marginBottom: scale(12),
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
