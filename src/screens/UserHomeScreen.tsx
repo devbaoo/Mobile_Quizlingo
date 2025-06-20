@@ -3,7 +3,7 @@ import SidebarOverlay from '@/components/SidebarOverlay';
 import { fetchLessons, retryLesson } from '@/services/slices/lesson/lessonSlice';
 import { fetchUserProfile } from '@/services/slices/user/userSlice';
 import { AppDispatch, RootState } from '@/services/store/store';
-import { ILesson, ITopicWithLessons } from '@/types/lesson.type';
+import { ILearningPathLesson } from '@/types/lesson.type';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -32,26 +32,45 @@ type RootStackParamList = {
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-// Extend the ILesson type with ACTIVE status
-type ExtendedLesson = Omit<ILesson, 'status'> & {
+// Extend ILearningPathLesson to include ACTIVE status
+type ExtendedLearningPathLesson = Omit<ILearningPathLesson, 'status'> & {
     status: "COMPLETE" | "LOCKED" | "ACTIVE";
 };
-
-// Create a modified version of ITopicWithLessons that uses ExtendedLesson
-interface ExtendedTopicWithLessons extends Omit<ITopicWithLessons, 'lessons'> {
-    lessons: ExtendedLesson[];
-}
 
 const UserHomeScreen = () => {
     const dispatch = useDispatch<AppDispatch>();
     const navigation = useNavigation<NavigationProp>();
-    const { loading: lessonLoading, error } = useSelector((state: RootState) => state.lesson);
+    const { loading: lessonLoading, error, lessons } = useSelector((state: RootState) => state.lesson);
     const { profile, loading: userLoading } = useSelector((state: RootState) => state.user);
 
-    const [topics, setTopics] = useState<ExtendedTopicWithLessons[]>([]);
+    const [processedLessons, setProcessedLessons] = useState<ExtendedLearningPathLesson[]>([]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const sidebarOpacity = useRef(new Animated.Value(0)).current;
+
+    // Process lessons to determine which ones should be active
+    useEffect(() => {
+        if (lessons && lessons.length > 0) {
+            const updatedLessons = lessons.map((lesson, index) => {
+                const extendedLesson = { ...lesson } as ExtendedLearningPathLesson;
+                
+                // First lesson should be ACTIVE if it's LOCKED
+                if (index === 0 && lesson.status === 'LOCKED') {
+                    extendedLesson.status = 'ACTIVE';
+                }
+                // For other lessons, if previous lesson is COMPLETE and this one is LOCKED, make it ACTIVE
+                else if (index > 0 && lesson.status === 'LOCKED') {
+                    const previousLesson = lessons[index - 1];
+                    if (previousLesson.status === 'COMPLETE') {
+                        extendedLesson.status = 'ACTIVE';
+                    }
+                }
+                
+                return extendedLesson;
+            });
+            setProcessedLessons(updatedLessons);
+        }
+    }, [lessons]);
 
     // Load data on initial mount
     useEffect(() => {
@@ -93,56 +112,10 @@ const UserHomeScreen = () => {
 
     const loadLessons = async () => {
         try {
-            const response = await dispatch(fetchLessons({ page: 1, limit: 10 })).unwrap();
-
-            // Process topics to determine which lessons should be unlocked
-            const processedTopics = processTopicsForUnlocking(response.topics);
-            setTopics(processedTopics);
+            await dispatch(fetchLessons({ page: 1, limit: 10 })).unwrap();
         } catch (error) {
             console.error('Failed to load lessons:', error);
         }
-    };
-
-    // Process topics to determine which lessons should be unlocked
-    const processTopicsForUnlocking = (topicsData: ITopicWithLessons[]): ExtendedTopicWithLessons[] => {
-        return topicsData.map((topicWithLessons, topicIndex) => {
-            // For the first topic, make sure the first lesson is always unlocked
-            const updatedLessons = topicWithLessons.lessons.map((lesson, lessonIndex) => {
-                // Convert to ExtendedLesson type
-                const extendedLesson = { ...lesson } as ExtendedLesson;
-
-                // For the first lesson in the first topic, always make it ACTIVE if it's LOCKED
-                if (topicIndex === 0 && lessonIndex === 0 && extendedLesson.status === 'LOCKED') {
-                    extendedLesson.status = 'ACTIVE';
-                }
-                // If this is the first lesson in topic and not the first topic,
-                // check if all lessons in previous topic are completed
-                else if (lessonIndex === 0 && topicIndex > 0) {
-                    const previousTopic = topicsData[topicIndex - 1];
-                    const allPreviousTopicLessonsCompleted = previousTopic.lessons.every(
-                        prevLesson => prevLesson.status === 'COMPLETE'
-                    );
-
-                    if (allPreviousTopicLessonsCompleted && extendedLesson.status === 'LOCKED') {
-                        extendedLesson.status = 'ACTIVE';
-                    }
-                }
-                // If not the first lesson, check if previous lesson is completed
-                else if (lessonIndex > 0) {
-                    const previousLesson = topicWithLessons.lessons[lessonIndex - 1];
-                    if (previousLesson.status === 'COMPLETE' && extendedLesson.status === 'LOCKED') {
-                        extendedLesson.status = 'ACTIVE';
-                    }
-                }
-
-                return extendedLesson;
-            });
-
-            return {
-                ...topicWithLessons,
-                lessons: updatedLessons
-            };
-        });
     };
 
     const onRefresh = async () => {
@@ -228,7 +201,7 @@ const UserHomeScreen = () => {
         }
     };
 
-    if ((lessonLoading || userLoading) && topics.length === 0) {
+    if ((lessonLoading || userLoading) && !processedLessons.length) {
         return (
             <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#58CC02" />
@@ -287,74 +260,60 @@ const UserHomeScreen = () => {
                 }
             >
                 <View style={styles.learningPathContainer}>
-                    {topics.map((topicWithLessons, topicIndex) => (
-                        <View key={topicWithLessons.topic._id} style={styles.topicSection}>
-                            <View style={styles.topicHeader}>
-                                <View style={styles.topicIcon}><Text>🧩</Text></View>
-                                <View>
-                                    <Text style={styles.topicName}>{topicWithLessons.topic.name.toUpperCase()}</Text>
-                                    <Text style={styles.topicDescription}>{topicWithLessons.topic.description}</Text>
-                                </View>
-                            </View>
-
-                            <View style={styles.pathContainer}>
-                                {topicWithLessons.lessons.map((lesson, lessonIndex) => (
-                                    <React.Fragment key={lesson._id}>
-                                        {lessonIndex > 0 && (
-                                            <View
-                                                style={[
-                                                    styles.pathLine,
-                                                    lesson.status === 'LOCKED' ? styles.pathLineLocked :
-                                                        (lessonIndex % 2 === 0 ? styles.pathLineEven : styles.pathLineOdd)
-                                                ]}
-                                            />
-                                        )}
-                                        <TouchableOpacity
-                                            style={[
-                                                styles.lessonContainer,
-                                                lesson.status === 'LOCKED' ? styles.lessonContainerLocked :
-                                                    lesson.status === 'COMPLETE' ? styles.lessonContainerComplete :
-                                                        styles.lessonContainerActive
-                                            ]}
-                                            onPress={() => handleLessonPress(lesson._id, lesson.status)}
-                                            activeOpacity={lesson.status === 'LOCKED' ? 1 : 0.85}
-                                        >
-                                            {renderLessonIcon(lesson.status, lessonIndex)}
-                                            <View style={{ flex: 1 }}>
-                                                <Text
-                                                    style={[
-                                                        styles.lessonTitle,
-                                                        lesson.status === 'LOCKED' ? styles.lessonTitleLocked : {}
-                                                    ]}
-                                                    numberOfLines={2}
-                                                >
-                                                    {lesson.title}
-                                                </Text>
-                                                <View style={styles.lessonMetaContainer}>
-                                                    <View style={styles.levelIndicator}>
-                                                        <Text style={styles.levelIndicatorText}>
-                                                            {lesson.level?.name || 'Beginner'}
-                                                        </Text>
-                                                    </View>
-                                                    <View style={styles.skillsContainer}>
-                                                        {lesson.skills.map((skill) => (
-                                                            <View key={skill._id} style={styles.skillBadge}>
-                                                                <Text style={styles.skillText}>
-                                                                    {skill.name === 'Writing' ? '✏️' :
-                                                                        skill.name === 'Listening' ? '👂' :
-                                                                            skill.name === 'Speaking' ? '🗣️' :
-                                                                                skill.name === 'Vocabulary' ? '📚' : '🧠'}
-                                                                </Text>
-                                                            </View>
-                                                        ))}
-                                                    </View>
+                    {processedLessons.map((lesson, index) => (
+                        <React.Fragment key={lesson.lessonId}>
+                            {index > 0 && (
+                                <View
+                                    style={[
+                                        styles.pathLine,
+                                        lesson.status === 'LOCKED' ? styles.pathLineLocked :
+                                            (index % 2 === 0 ? styles.pathLineEven : styles.pathLineOdd)
+                                    ]}
+                                />
+                            )}
+                            <TouchableOpacity
+                                style={[
+                                    styles.lessonContainer,
+                                    lesson.status === 'LOCKED' ? styles.lessonContainerLocked :
+                                        lesson.status === 'COMPLETE' ? styles.lessonContainerComplete :
+                                            styles.lessonContainerActive
+                                ]}
+                                onPress={() => handleLessonPress(lesson.lessonId, lesson.status)}
+                                activeOpacity={lesson.status === 'LOCKED' ? 1 : 0.85}
+                            >
+                                {renderLessonIcon(lesson.status, index)}
+                                <View style={{ flex: 1 }}>
+                                    <Text
+                                        style={[
+                                            styles.lessonTitle,
+                                            lesson.status === 'LOCKED' ? styles.lessonTitleLocked : {}
+                                        ]}
+                                        numberOfLines={2}
+                                    >
+                                        {lesson.title}
+                                    </Text>
+                                    <View style={styles.lessonMetaContainer}>
+                                        <View style={styles.levelIndicator}>
+                                            <Text style={styles.levelIndicatorText}>
+                                                {lesson.level}
+                                            </Text>
+                                        </View>
+                                        <View style={styles.skillsContainer}>
+                                            {lesson.focusSkills.map((skill, skillIndex) => (
+                                                <View key={skillIndex} style={styles.skillBadge}>
+                                                    <Text style={styles.skillText}>
+                                                        {skill === 'Writing' ? '✏️' :
+                                                            skill === 'Listening' ? '👂' :
+                                                                skill === 'Speaking' ? '🗣️' :
+                                                                    skill === 'Vocabulary' ? '📚' : '🧠'}
+                                                    </Text>
                                                 </View>
-                                            </View>
-                                        </TouchableOpacity>
-                                    </React.Fragment>
-                                ))}
-                            </View>
-                        </View>
+                                            ))}
+                                        </View>
+                                    </View>
+                                </View>
+                            </TouchableOpacity>
+                        </React.Fragment>
                     ))}
                 </View>
             </ScrollView>

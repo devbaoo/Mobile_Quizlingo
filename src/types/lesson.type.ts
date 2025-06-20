@@ -69,7 +69,7 @@ export interface IQuestion {
   lessonId: string;
   content: string;
   type: "multiple_choice" | "text_input" | "audio_input";
-  skill: string;
+  skill: string | ISkill;
   options: string[];
   correctAnswer?: string;
   score: number;
@@ -165,4 +165,33 @@ export interface CreateLessonData {
     correctAnswer?: string;
     score: number;
   }[];
+}
+
+export interface ILearningPathResponse {
+  success: boolean;
+  message: string;
+  learningPath: ILearningPathLesson[];
+  pagination: ILearningPathPagination;
+}
+
+export interface ILearningPathLesson {
+  pathId: string;
+  lessonId: string;
+  title: string;
+  topic: string;
+  level: string;
+  focusSkills: string[];
+  recommendedReason: string;
+  accuracyBefore: number;
+  order: number;
+  completed: boolean;
+  createdAt: string;
+  status: "COMPLETE" | "LOCKED";
+}
+
+export interface ILearningPathPagination {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  pageSize: number;
 }

@@ -12,7 +12,7 @@ export const ENDPOINTS = {
     RESEND_VERIFICATION: "/auth/resend-verification",
   },
   LESSON: {
-    GET_ALL: "/lessons",
+    GET_ALL: "/user-lessons-learning-path",
     GET_BY_ID: (id: string) => `/lessons/${id}`,
     COMPLETE: "/progress",
     RETRY: "/lessons/retry",
