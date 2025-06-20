@@ -1,6 +1,7 @@
 import LeaderboardScreen from '@/screens/LeaderboardScreen';
 import LessonCompleteScreen from '@/screens/LessonCompleteScreen';
 import LessonQuizScreen from '@/screens/LessonQuizScreen';
+import ProfileScreen from '@/screens/ProfileScreen';
 import { persistor, store } from '@/services/store/store';
 import { GluestackUIProvider } from "@gluestack-ui/themed";
 import { NavigationContainer } from '@react-navigation/native';
@@ -15,9 +16,10 @@ import config from "./gluestack-ui.config";
 import { ForgotPasswordScreen } from './src/screens/ForgotPasswordScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
+import PaymentResultScreen from './src/screens/PaymentResultScreen';
 import { RegisterScreen } from './src/screens/RegisterScreen';
+import SubscriptionPackageScreen from './src/screens/SubscriptionPackageScreen';
 import UserHomeScreen from './src/screens/UserHomeScreen';
-import ProfileScreen from '@/screens/ProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -139,6 +141,8 @@ export default function App() {
                             <Stack.Screen name="LessonComplete" component={LessonCompleteScreen} />
                             <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
                             <Stack.Screen name="ProfileDetail" component={ProfileScreen} />
+                            <Stack.Screen name="SubscriptionPackage" component={SubscriptionPackageScreen} />
+                            <Stack.Screen name="PaymentResult" component={PaymentResultScreen} />
                         </Stack.Navigator>
                     </NavigationContainer>
                     <Toast config={toastConfig} />
