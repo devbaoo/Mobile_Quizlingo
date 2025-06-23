@@ -5,6 +5,7 @@ import { fetchLeaderboard } from '@/services/slices/leaderboard/leaderboardSlice
 import { fetchUserProfile } from '@/services/slices/user/userSlice';
 import { AppDispatch, RootState } from '@/services/store/store';
 import { LeaderboardEntry } from '@/types/user.types';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -128,44 +129,49 @@ const LeaderboardScreen = () => {
         const rankIcon = getRankIcon(index);
         const rankColor = getRankColor(index);
         const isTopThree = index < 3;
+        const isCurrentUser = profile && entry.email === profile.email;
 
         return (
-            <View key={entry._id} style={[styles.leaderboardItem, isTopThree && styles.topThreeItem]}>
-                <View style={styles.rankContainer}>
-                    <Text style={[styles.rankText, { color: rankColor }]}>
-                        {rankIcon}
-                    </Text>
+            <View
+                key={entry._id}
+                style={[
+                    styles.leaderboardItem,
+                    !isTopThree && {
+                        backgroundColor: isCurrentUser ? '#dbeafe' : '#f1f5f9',
+                        borderRadius: 16,
+                        marginBottom: 12,
+                    },
+                    isTopThree && styles.topThreeItem,
+                    isCurrentUser && { borderWidth: 2, borderColor: '#3B82F6' }
+                ]}
+            >
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    <Text style={[styles.rankText, { marginRight: 10 }]}>{rankIcon}</Text>
+                    {entry.avatar ? (
+                        <Image
+                            source={{ uri: entry.avatar }}
+                            style={[styles.avatar, { marginRight: 8 }]}
+                        />
+                    ) : (
+                        <View
+                            style={{
+                                width: 35,
+                                height: 35,
+                                borderRadius: 25,
+                                backgroundColor: '#3B82F6',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                marginRight: 8,
+                            }}
+                        >
+                            <MaterialIcons name="person" size={28} color="#fff" />
+                        </View>
+                    )}
+                    <Text style={[styles.userName, { marginLeft: 0 }]}>{entry.firstName} {entry.lastName}</Text>
                 </View>
-
-                <View style={styles.userInfoContainer}>
-                    <Image
-                        source={{ uri: entry.avatar }}
-                        style={styles.avatar}
-                        defaultSource={{ uri: 'https://via.placeholder.com/48x48/6B7280/FFFFFF?text=U' }}
-                    />
-                    <View style={styles.userDetails}>
-                        <Text style={styles.userName}>
-                            {entry.firstName} {entry.lastName}
-                        </Text>
-                        <Text style={styles.userEmail}>
-                            {entry.email}
-                        </Text>
-                    </View>
-                </View>
-
-                <View style={styles.statsContainer}>
-                    <View style={styles.statItem}>
-                        <Text style={styles.statLabel}>Điểm</Text>
-                        <Text style={[styles.statValue, { color: rankColor }]}>
-                            {entry.totalScore.toLocaleString()}
-                        </Text>
-                    </View>
-                    <View style={styles.statItem}>
-                        <Text style={styles.statLabel}>Bài học</Text>
-                        <Text style={styles.statValue}>
-                            {entry.completedLessons}
-                        </Text>
-                    </View>
+                <View style={{ alignItems: 'flex-end', minWidth: 80 }}>
+                    <Text style={{ color: rankColor, fontWeight: 'bold' }}>Điểm: {entry.totalScore} ★</Text>
+                    <Text style={{ color: '#1e293b', fontWeight: 'bold' }}>Bài học: {entry.completedLessons}</Text>
                 </View>
             </View>
         );
@@ -208,16 +214,66 @@ const LeaderboardScreen = () => {
                                     <Text style={styles.sectionTitleIcon}>🏆</Text>
                                     <Text style={styles.sectionTitle}>Bảng xếp hạng</Text>
                                 </View>
-                                {entries.slice(0, 3).map((entry, index) =>
-                                    renderLeaderboardItem(entry, index)
-                                )}
+                                <View
+                                    style={{
+                                        backgroundColor: '#f8fafc',
+                                        borderRadius: 20,
+                                        marginBottom: 20,
+                                        paddingVertical: 24,
+                                        paddingHorizontal: 8,
+                                        shadowColor: '#000',
+                                        shadowOffset: { width: 0, height: 2 },
+                                        shadowOpacity: 0.06,
+                                        shadowRadius: 8,
+                                        elevation: 3,
+                                        position: 'relative',
+                                    }}
+                                >
+                                    <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-end', gap: 4 }}>
+                                        {/* Top 2 - Left */}
+                                        {entries[1] && (
+                                            <View style={{ alignItems: 'center', flex: 1, backgroundColor: '#E3EAFD', borderRadius: 16, marginHorizontal: 4, paddingVertical: 10 }}>
+                                                <View style={{ position: 'relative', marginBottom: 6 }}>
+                                                    <Image source={{ uri: entries[1].avatar }} style={{ width: 64, height: 64, borderRadius: 32, borderWidth: 3, borderColor: '#C0C0C0', backgroundColor: '#fff' }} />
+                                                    <Text style={{ position: 'absolute', top: -18, left: 18, fontSize: 20 }}>👑</Text>
+                                                </View>
+                                                <Text style={{ fontWeight: 'bold', color: '#1e293b', fontSize: 14, textAlign: 'center' }}>{entries[1].firstName} {entries[1].lastName}</Text>
+                                                <Text style={{ color: '#C0C0C0', fontWeight: 'bold' }}>Điểm: {entries[1].totalScore} ★</Text>
+                                                <Text style={{ color: '#1e293b', fontWeight: 'bold' }}>Bài học: {entries[1].completedLessons}</Text>
+                                            </View>
+                                        )}
+                                        {/* Top 1 - Center */}
+                                        {entries[0] && (
+                                            <View style={{ alignItems: 'center', flex: 1, backgroundColor: '#FFF3B0', borderRadius: 16, marginHorizontal: 4, paddingVertical: 10 }}>
+                                                <View style={{ position: 'relative', marginBottom: 6 }}>
+                                                    <Image source={{ uri: entries[0].avatar }} style={{ width: 80, height: 80, borderRadius: 40, borderWidth: 3, borderColor: '#FFD700', backgroundColor: '#fff' }} />
+                                                    <Text style={{ position: 'absolute', top: -22, left: 28, fontSize: 24 }}>👑</Text>
+                                                </View>
+                                                <Text style={{ fontWeight: 'bold', color: '#1e293b', fontSize: 16, textAlign: 'center' }}>{entries[0].firstName} {entries[0].lastName}</Text>
+                                                <Text style={{ color: '#FFD700', fontWeight: 'bold' }}>Điểm: {entries[0].totalScore} ★</Text>
+                                                <Text style={{ color: '#1e293b', fontWeight: 'bold' }}>Bài học: {entries[0].completedLessons}</Text>
+                                            </View>
+                                        )}
+                                        {/* Top 3 - Right */}
+                                        {entries[2] && (
+                                            <View style={{ alignItems: 'center', flex: 1, backgroundColor: '#F5E3D3', borderRadius: 16, marginHorizontal: 4, paddingVertical: 10 }}>
+                                                <View style={{ position: 'relative', marginBottom: 6 }}>
+                                                    <Image source={{ uri: entries[2].avatar }} style={{ width: 64, height: 64, borderRadius: 32, borderWidth: 3, borderColor: '#CD7F32', backgroundColor: '#fff' }} />
+                                                    <Text style={{ position: 'absolute', top: -18, left: 18, fontSize: 20 }}>👑</Text>
+                                                </View>
+                                                <Text style={{ fontWeight: 'bold', color: '#1e293b', fontSize: 14, textAlign: 'center' }}>{entries[2].firstName} {entries[2].lastName}</Text>
+                                                <Text style={{ color: '#CD7F32', fontWeight: 'bold' }}>Điểm: {entries[2].totalScore} ★</Text>
+                                                <Text style={{ color: '#1e293b', fontWeight: 'bold' }}>Bài học: {entries[2].completedLessons}</Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                </View>
                             </View>
                         )}
 
                         {/* Rest of the leaderboard */}
                         {entries.slice(3).length > 0 && (
                             <View style={styles.restSection}>
-                                <Text style={styles.sectionTitle}>Các vị trí khác</Text>
                                 {entries.slice(3).map((entry, index) =>
                                     renderLeaderboardItem(entry, index + 3)
                                 )}
@@ -343,27 +399,6 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#111827',
         marginBottom: 2,
-    },
-    userEmail: {
-        fontSize: 14,
-        color: '#6B7280',
-    },
-    statsContainer: {
-        alignItems: 'flex-end',
-    },
-    statItem: {
-        alignItems: 'center',
-        marginBottom: 4,
-    },
-    statLabel: {
-        fontSize: 12,
-        color: '#6B7280',
-        marginBottom: 2,
-    },
-    statValue: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#111827',
     },
     emptyContainer: {
         flex: 1,
