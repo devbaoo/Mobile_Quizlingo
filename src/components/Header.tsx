@@ -1,4 +1,4 @@
-import { User } from '@/types/user.types';
+import { User, UserProfile } from '@/types/user.types';
 import React from 'react';
 import {
     Image,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 
 interface HeaderProps {
-    user: User | null;
+    user: User | UserProfile | null;
     onProfilePress: () => void;
 }
 
