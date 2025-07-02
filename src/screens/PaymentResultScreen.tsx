@@ -1,13 +1,23 @@
 import { checkPaymentStatus } from '@/services/slices/package/packageSlice';
 import { AppDispatch } from '@/services/store/store';
-import { useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 
+type RootStackParamList = {
+    LessonQuiz: { lessonId: string };
+    UserHome: undefined;
+    Leaderboard: undefined;
+};
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
 const PaymentResultScreen = () => {
     const route = useRoute();
     const dispatch = useDispatch<AppDispatch>();
+    const navigation = useNavigation<NavigationProp>();
     const [status, setStatus] = useState<'success' | 'pending' | 'failed' | 'expired' | 'cancel' | 'loading'>('loading');
     const [orderCode, setOrderCode] = useState<string | null>(null);
 
@@ -22,6 +32,9 @@ const PaymentResultScreen = () => {
                     switch (res.paymentStatus) {
                         case 'PAID':
                             setStatus('success');
+                            setTimeout(() => {
+                                navigation.navigate('UserHome');
+                            }, 5000);
                             break;
                         case 'EXPIRED':
                             setStatus('expired');
@@ -39,7 +52,7 @@ const PaymentResultScreen = () => {
         } else {
             setStatus('failed');
         }
-    }, [route.params, dispatch]);
+    }, [route.params, dispatch, navigation]);
 
     if (status === 'loading') {
         return (
