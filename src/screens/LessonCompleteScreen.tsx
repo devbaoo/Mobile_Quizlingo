@@ -7,8 +7,10 @@ import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     BackHandler,
+    Platform,
     SafeAreaView,
     ScrollView,
+    StatusBar,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -67,7 +69,7 @@ const LessonCompleteScreen = () => {
     const handleContinue = () => {
         navigation.reset({
             index: 0,
-            routes: [{ name: 'UserHome' }],
+            routes: [{ name: 'UserHome', params: { isLessonJustCompleted: true } }],
         });
     };
 
@@ -126,7 +128,6 @@ const LessonCompleteScreen = () => {
                         <Text style={styles.scoreLabel}>Điểm số của bạn</Text>
                         <View style={styles.scoreCircle}>
                             <Text style={styles.scoreValue}>{score}</Text>
-                            <Text style={styles.scoreMax}>/{currentLesson?.maxScore || 100}</Text>
                         </View>
                     </View>
 
@@ -209,6 +210,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#fff',
+        paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 32) : 32,
     },
     loadingContainer: {
         flex: 1,

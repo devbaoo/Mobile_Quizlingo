@@ -11,8 +11,10 @@ import {
     Alert,
     BackHandler,
     Dimensions,
+    Platform,
     SafeAreaView,
     ScrollView,
+    StatusBar,
     StyleSheet,
     Text,
     TextInput,
@@ -215,14 +217,14 @@ const LessonQuizScreen = () => {
                 lessonId: currentLesson._id,
                 questionCount: currentLesson.questions.length
             });
-            
+
             const shuffled = shuffleQuestionsAndOptions(currentLesson.questions);
             console.log('Shuffled questions:', shuffled.map(q => ({
                 id: q._id,
                 type: q.type,
                 content: q.content.substring(0, 50)
             })));
-            
+
             // Batch all state updates together
             const initialState = {
                 questions: shuffled,
@@ -739,7 +741,7 @@ const LessonQuizScreen = () => {
         if (question.audioContent) {
             return true;
         }
-        
+
         // If skill is a string (ID), we can't determine the type directly
         // If skill is an object, check its name
         if (typeof question.skill === 'object' && question.skill?.name === 'Listening') {
@@ -771,7 +773,7 @@ const LessonQuizScreen = () => {
                             'Thoát bài học',
                             'Bạn có chắc muốn thoát? Tiến độ bài học sẽ không được lưu.',
                             [
-                                { text: 'Hủy', style: 'cancel', onPress: () => {} },
+                                { text: 'Hủy', style: 'cancel', onPress: () => { } },
                                 { text: 'Thoát', style: 'destructive', onPress: () => navigation.navigate('UserHome') },
                             ]
                         );
@@ -784,14 +786,16 @@ const LessonQuizScreen = () => {
                     <View style={styles.progressBar}>
                         <View style={[styles.progressFill, { width: `${progress}%` }]} />
                     </View>
-                    <Text style={styles.progressText}>
-                        {currentQuestionIndex + 1}/{shuffledQuestions.length}
-                    </Text>
                 </View>
 
                 <View style={styles.timerContainer}>
                     <Text style={styles.timerText}>⏱️ {formatTime(remainingTime)}</Text>
                 </View>
+            </View>
+
+            {/* Số câu hỏi ở trên box câu hỏi */}
+            <View style={styles.questionIndexBox}>
+                <Text style={styles.questionIndexText}>{currentQuestionIndex + 1}/{shuffledQuestions.length}</Text>
             </View>
 
             <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
@@ -903,7 +907,7 @@ const LessonQuizScreen = () => {
                                                 sound.unloadAsync();
                                             }
                                             setSound(null);
-                                            setAudioRecordings(prev => 
+                                            setAudioRecordings(prev =>
                                                 prev.filter(r => r.questionId !== currentQuestion._id)
                                             );
                                             setRecordingTime(0);
@@ -923,9 +927,9 @@ const LessonQuizScreen = () => {
                     style={[
                         styles.nextButton,
                         (!selectedAnswer && currentQuestion.type === 'multiple_choice') ||
-                        (!textAnswer.trim() && currentQuestion.type === 'text_input') ||
-                        (!audioRecordings.find(r => r.questionId === currentQuestion._id) && 
-                         currentQuestion.type === 'audio_input')
+                            (!textAnswer.trim() && currentQuestion.type === 'text_input') ||
+                            (!audioRecordings.find(r => r.questionId === currentQuestion._id) &&
+                                currentQuestion.type === 'audio_input')
                             ? styles.nextButtonDisabled
                             : null,
                     ]}
@@ -933,8 +937,8 @@ const LessonQuizScreen = () => {
                     disabled={
                         (!selectedAnswer && currentQuestion.type === 'multiple_choice') ||
                         (!textAnswer.trim() && currentQuestion.type === 'text_input') ||
-                        (!audioRecordings.find(r => r.questionId === currentQuestion._id) && 
-                         currentQuestion.type === 'audio_input')
+                        (!audioRecordings.find(r => r.questionId === currentQuestion._id) &&
+                            currentQuestion.type === 'audio_input')
                     }
                 >
                     <Text style={styles.nextButtonText}>
@@ -950,6 +954,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#fff',
+        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     },
     loadingContainer: {
         flex: 1,
@@ -962,7 +967,7 @@ const styles = StyleSheet.create({
         color: '#4b4b4b',
     },
     header: {
-        paddingTop: scale(0),
+        paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 36) : 36,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -972,12 +977,12 @@ const styles = StyleSheet.create({
         borderBottomColor: '#e0e0e0',
     },
     backButton: {
-        padding: scale(8),
-        borderRadius: scale(8),
+        padding: scale(2), // giảm padding
+        borderRadius: scale(6), // giảm borderRadius
         backgroundColor: '#f5f5f5',
     },
     backButtonText: {
-        fontSize: scale(20),
+        fontSize: scale(16), // giảm fontSize
         color: '#4b4b4b',
     },
     progressContainer: {
@@ -1216,6 +1221,17 @@ const styles = StyleSheet.create({
     nextButtonText: {
         color: 'white',
         fontSize: scale(18),
+        fontWeight: 'bold',
+    },
+    // Thêm style cho số câu hỏi
+    questionIndexBox: {
+        alignItems: 'center',
+        marginTop: 8,
+        marginBottom: 4,
+    },
+    questionIndexText: {
+        fontSize: scale(15),
+        color: '#888',
         fontWeight: 'bold',
     },
 });

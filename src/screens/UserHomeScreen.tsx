@@ -5,7 +5,7 @@ import { fetchLessons, retryLesson } from '@/services/slices/lesson/lessonSlice'
 import { fetchUserProfile } from '@/services/slices/user/userSlice';
 import { AppDispatch, RootState } from '@/services/store/store';
 import { ILearningPathLesson } from '@/types/lesson.type';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -40,6 +40,7 @@ type ExtendedLearningPathLesson = Omit<ILearningPathLesson, 'status'> & {
 const UserHomeScreen = () => {
     const dispatch = useDispatch<AppDispatch>();
     const navigation = useNavigation<NavigationProp>();
+    const route = useRoute();
     const { loading: lessonLoading, error, lessons } = useSelector((state: RootState) => state.lesson);
     const { profile, loading: userLoading } = useSelector((state: RootState) => state.user);
 
@@ -48,12 +49,28 @@ const UserHomeScreen = () => {
     const [refreshing, setRefreshing] = useState(false);
     const sidebarOpacity = useRef(new Animated.Value(0)).current;
 
+    // Tính progress tổng thể
+    const completedCount = processedLessons.filter(l => l.status === 'COMPLETE').length;
+    const totalCount = processedLessons.length;
+    const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+    // Gom bài học theo chủ đề (nếu có trường topicName)
+    const lessonsByTopic = React.useMemo(() => {
+        const map: { [topic: string]: ExtendedLearningPathLesson[] } = {};
+        processedLessons.forEach(lesson => {
+            const topic = (lesson as any).topicName || 'Chủ đề ';
+            if (!map[topic]) map[topic] = [];
+            map[topic].push(lesson);
+        });
+        return map;
+    }, [processedLessons]);
+
     // Process lessons to determine which ones should be active
     useEffect(() => {
         if (lessons && lessons.length > 0) {
             const updatedLessons = lessons.map((lesson, index) => {
                 const extendedLesson = { ...lesson } as ExtendedLearningPathLesson;
-                
+
                 // First lesson should be ACTIVE if it's LOCKED
                 if (index === 0 && lesson.status === 'LOCKED') {
                     extendedLesson.status = 'ACTIVE';
@@ -65,7 +82,7 @@ const UserHomeScreen = () => {
                         extendedLesson.status = 'ACTIVE';
                     }
                 }
-                
+
                 return extendedLesson;
             });
             setProcessedLessons(updatedLessons);
@@ -75,7 +92,14 @@ const UserHomeScreen = () => {
     // Load data on initial mount
     useEffect(() => {
         loadUserData();
-        loadLessons();
+        // Kiểm tra nếu vừa hoàn thành bài học thì delay 5s trước khi loadLessons
+        if (route?.params && (route.params as any).isLessonJustCompleted) {
+            setTimeout(() => {
+                loadLessons();
+            }, 5000);
+        } else {
+            loadLessons();
+        }
     }, []);
 
     // Refresh data when returning to this screen
@@ -213,12 +237,9 @@ const UserHomeScreen = () => {
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar backgroundColor="#fff" barStyle="dark-content" />
-
             {/* Header */}
-            <Header
-                user={profile}
-                onProfilePress={toggleSidebar}
-            />
+            <Header user={profile} onProfilePress={toggleSidebar} />
+
 
             <ScrollView
                 style={styles.scrollView}
@@ -231,61 +252,77 @@ const UserHomeScreen = () => {
                     />
                 }
             >
+                {/* Render lessons by topic */}
                 <View style={styles.learningPathContainer}>
-                    {processedLessons.map((lesson, index) => (
-                        <React.Fragment key={lesson.lessonId}>
-                            {index > 0 && (
-                                <View
-                                    style={[
-                                        styles.pathLine,
-                                        lesson.status === 'LOCKED' ? styles.pathLineLocked :
-                                            (index % 2 === 0 ? styles.pathLineEven : styles.pathLineOdd)
-                                    ]}
-                                />
-                            )}
-                            <TouchableOpacity
-                                style={[
-                                    styles.lessonContainer,
-                                    lesson.status === 'LOCKED' ? styles.lessonContainerLocked :
-                                        lesson.status === 'COMPLETE' ? styles.lessonContainerComplete :
-                                            styles.lessonContainerActive
-                                ]}
-                                onPress={() => handleLessonPress(lesson.lessonId, lesson.status)}
-                                activeOpacity={lesson.status === 'LOCKED' ? 1 : 0.85}
-                            >
-                                {renderLessonIcon(lesson.status, index)}
-                                <View style={{ flex: 1 }}>
-                                    <Text
-                                        style={[
-                                            styles.lessonTitle,
-                                            lesson.status === 'LOCKED' ? styles.lessonTitleLocked : {}
-                                        ]}
-                                        numberOfLines={2}
-                                    >
-                                        {lesson.title}
-                                    </Text>
-                                    <View style={styles.lessonMetaContainer}>
-                                        <View style={styles.levelIndicator}>
-                                            <Text style={styles.levelIndicatorText}>
-                                                {lesson.level}
-                                            </Text>
-                                        </View>
-                                        <View style={styles.skillsContainer}>
-                                            {lesson.focusSkills.map((skill, skillIndex) => (
-                                                <View key={skillIndex} style={styles.skillBadge}>
-                                                    <Text style={styles.skillText}>
-                                                        {skill === 'Writing' ? '✏️' :
-                                                            skill === 'Listening' ? '👂' :
-                                                                skill === 'Speaking' ? '🗣️' :
-                                                                    skill === 'Vocabulary' ? '📚' : '🧠'}
-                                                    </Text>
-                                                </View>
-                                            ))}
-                                        </View>
-                                    </View>
+                    {Object.entries(lessonsByTopic).map(([topic, lessons]) => (
+                        <View key={topic} style={styles.topicSection}>
+                            <View style={styles.topicHeader}>
+                                <Text style={styles.topicIcon}>{getTopicIcon(topic)}</Text>
+                                <View>
+                                    <Text style={styles.topicName}>{topic}</Text>
+                                    {/* Có thể thêm mô tả chủ đề nếu có */}
                                 </View>
-                            </TouchableOpacity>
-                        </React.Fragment>
+                            </View>
+                            <View style={styles.lessonCardList}>
+                                {lessons.map((lesson, index) => {
+                                    // Xác định trạng thái
+                                    const isComplete = lesson.status === 'COMPLETE';
+                                    const isLocked = lesson.status === 'LOCKED';
+                                    const isActive = lesson.status === 'ACTIVE';
+                                    return (
+                                        <TouchableOpacity
+                                            key={lesson.lessonId}
+                                            style={[
+                                                stylesV2.lessonCard,
+                                                isComplete && stylesV2.lessonCardComplete,
+                                                isActive && stylesV2.lessonCardActive,
+                                                isLocked && stylesV2.lessonCardLocked,
+                                            ]}
+                                            onPress={() => handleLessonPress(lesson.lessonId, lesson.status)}
+                                            activeOpacity={isLocked ? 1 : 0.85}
+                                            disabled={isLocked}
+                                        >
+                                            {/* Icon trạng thái */}
+                                            <View style={stylesV2.lessonCardIconBox}>
+                                                {isComplete ? (
+                                                    <View style={stylesV2.iconCircleComplete}>
+                                                        <Text style={stylesV2.iconText}>✓</Text>
+                                                    </View>
+                                                ) : isLocked ? (
+                                                    <View style={stylesV2.iconCircleLocked}>
+                                                        <Text style={stylesV2.iconText}>🔒</Text>
+                                                    </View>
+                                                ) : (
+                                                    <View style={stylesV2.iconCircleActive}>
+                                                        <Text style={stylesV2.iconText}>{index + 1}</Text>
+                                                    </View>
+                                                )}
+                                            </View>
+                                            {/* Nội dung bài học */}
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={stylesV2.lessonTitle} numberOfLines={2}>{lesson.title}</Text>
+                                                <View style={stylesV2.lessonMetaRow}>
+                                                    <View style={stylesV2.levelBadge}>
+                                                        <Text style={stylesV2.levelBadgeText}>{lesson.level}</Text>
+                                                    </View>
+                                                    <View style={stylesV2.skillsRow}>
+                                                        {lesson.focusSkills.map((skill, i) => (
+                                                            <Text key={i} style={stylesV2.skillIcon}>{getSkillIcon(skill)}</Text>
+                                                        ))}
+                                                    </View>
+                                                </View>
+                                            </View>
+                                            {/* Overlay icon khóa lớn nếu bị khóa */}
+                                            {isLocked && (
+                                                <View style={stylesV2.lockOverlayBig} pointerEvents="none">
+                                                    <Text style={stylesV2.lockOverlayIcon}>🔒</Text>
+                                                </View>
+                                            )}
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        </View>
                     ))}
                 </View>
             </ScrollView>
@@ -304,6 +341,28 @@ const UserHomeScreen = () => {
         </SafeAreaView>
     );
 };
+
+// Helper: icon cho chủ đề
+function getTopicIcon(topic: string) {
+    switch (topic.toLowerCase()) {
+        case 'vocabulary': return '📚';
+        case 'speaking': return '🗣️';
+        case 'listening': return '👂';
+        case 'writing': return '✏️';
+        case 'grammar': return '🧩';
+        default: return '🧠';
+    }
+}
+// Helper: icon cho kỹ năng
+function getSkillIcon(skill: string) {
+    switch (skill) {
+        case 'Writing': return '✏️';
+        case 'Listening': return '👂';
+        case 'Speaking': return '🗣️';
+        case 'Vocabulary': return '📚';
+        default: return '🧠';
+    }
+}
 
 const styles = StyleSheet.create({
     container: {
@@ -334,7 +393,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 12,
         backgroundColor: '#fff',
-        padding: 16,
+        padding: 12,
         borderRadius: 12,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -343,19 +402,13 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     topicIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#E6F7FF',
-        justifyContent: 'center',
-        alignItems: 'center',
+        fontSize: 32,
         marginRight: 12,
     },
     topicName: {
         fontSize: 18,
         fontWeight: 'bold',
         color: '#333',
-        marginBottom: 4,
     },
     topicDescription: {
         fontSize: 14,
@@ -474,6 +527,262 @@ const styles = StyleSheet.create({
     },
     skillText: {
         fontSize: 16,
+    },
+    userProgressSection: {
+        backgroundColor: '#fff',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e5e7eb',
+        marginBottom: 8,
+    },
+    userInfoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    avatarWrapper: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: '#e0e7ef',
+        justifyContent: 'center',
+        alignItems: 'center',
+        overflow: 'hidden',
+    },
+    avatar: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+    },
+    avatarPlaceholder: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: '#e0e7ef',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    userName: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#222',
+    },
+    userLevel: {
+        fontSize: 14,
+        color: '#3B82F6',
+    },
+    userXP: {
+        fontSize: 14,
+        color: '#fbbf24',
+    },
+    progressBarContainer: {
+        marginTop: 4,
+    },
+    progressBarBg: {
+        width: '100%',
+        height: 10,
+        backgroundColor: '#e5e7eb',
+        borderRadius: 8,
+        overflow: 'hidden',
+        marginBottom: 4,
+    },
+    progressBarFill: {
+        height: '100%',
+        backgroundColor: '#58CC02',
+        borderRadius: 8,
+    },
+    progressText: {
+        fontSize: 13,
+        color: '#666',
+        textAlign: 'right',
+    },
+    lessonCardList: {
+        gap: 12,
+    },
+    lessonCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+        elevation: 2,
+        borderWidth: 2,
+        position: 'relative',
+    },
+    lessonCardLocked: {
+        borderColor: '#ccc',
+        backgroundColor: '#f3f4f6',
+        opacity: 0.7,
+    },
+    lessonCardActive: {
+        borderColor: '#1CB0F6',
+    },
+    lessonCardComplete: {
+        borderColor: '#58CC02',
+    },
+    lessonCardIconWrapper: {
+        marginRight: 18,
+    },
+    lessonCardTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333',
+        flex: 1,
+    },
+    lessonMetaRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 6,
+    },
+    badgeComplete: {
+        position: 'absolute',
+        top: 8,
+        right: 12,
+        backgroundColor: '#58CC02',
+        borderRadius: 12,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+    },
+    badgeCompleteText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+    lockOverlay: {
+        position: 'absolute',
+        top: 8,
+        right: 12,
+        backgroundColor: '#ccc',
+        borderRadius: 12,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+    },
+    lockIcon: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+});
+
+// Thêm style mới cho lesson card
+const stylesV2 = StyleSheet.create({
+    lessonCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        borderRadius: 18,
+        padding: 18,
+        marginBottom: 14,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+        elevation: 3,
+        borderWidth: 2,
+        borderColor: '#e5e7eb',
+        position: 'relative',
+        minHeight: 80,
+    },
+    lessonCardComplete: {
+        borderColor: '#58CC02',
+        backgroundColor: '#f0fdf4',
+    },
+    lessonCardActive: {
+        borderColor: '#1CB0F6',
+        backgroundColor: '#f0f8ff',
+    },
+    lessonCardLocked: {
+        borderColor: '#ccc',
+        backgroundColor: '#f3f4f6',
+        opacity: 0.6,
+    },
+    lessonCardIconBox: {
+        marginRight: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    iconCircleComplete: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#58CC02',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    iconCircleActive: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#1CB0F6',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    iconCircleLocked: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#ccc',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    iconText: {
+        color: '#fff',
+        fontSize: 24,
+        fontWeight: 'bold',
+    },
+    lessonTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#222',
+        marginBottom: 6,
+    },
+    lessonMetaRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 2,
+    },
+    levelBadge: {
+        backgroundColor: '#f3f4f6',
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        marginRight: 8,
+    },
+    levelBadgeText: {
+        fontSize: 13,
+        color: '#666',
+        fontWeight: '600',
+    },
+    skillsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    skillIcon: {
+        fontSize: 18,
+        marginRight: 2,
+    },
+    lockOverlayBig: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(255,255,255,0.6)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 18,
+        zIndex: 2,
+    },
+    lockOverlayIcon: {
+        fontSize: 38,
+        color: '#ccc',
+        fontWeight: 'bold',
     },
 });
 
